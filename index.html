@@ -275,7 +275,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--g50);color:var(--gray900)
       <div class="act-card" id="actGym" onclick="toggleActivity('gym')">
         <span class="act-emoji">🏋️‍♀️</span>
         <span class="act-name">Atividade Física</span>
-        <span class="act-pts">academia/treino · +1 pt</span>
+        <span class="act-pts">funcional ou academia · +1 pt</span>
       </div>
     </div>
 
@@ -294,6 +294,12 @@ body{font-family:'DM Sans',sans-serif;background:var(--g50);color:var(--gray900)
 
   <!-- RANKING -->
   <div id="tabRanking" class="content" style="display:none">
+    <div class="filter-group" id="rankingFilters">
+      <button class="filter-btn active" onclick="setRankingFilter('geral',this)">🏆 Geral</button>
+      <button class="filter-btn" onclick="setRankingFilter('cardio',this)">🏃 Cardio</button>
+      <button class="filter-btn" onclick="setRankingFilter('gym',this)">🏋️ Func./Academia</button>
+      <button class="filter-btn" onclick="setRankingFilter('food',this)">🥗 Alimentação</button>
+    </div>
     <button class="sync-btn" onclick="loadRanking()">🔄 Atualizar</button>
     <div id="rankingList"><div class="loading"><div class="spinner"></div>Carregando...</div></div>
   </div>
@@ -326,9 +332,11 @@ body{font-family:'DM Sans',sans-serif;background:var(--g50);color:var(--gray900)
     <div class="filter-group">
       <button class="filter-btn active" onclick="showAdminTab('geral',this)">🏆 Geral</button>
       <button class="filter-btn" onclick="showAdminTab('cardio',this)">🏃 Cardio</button>
-      <button class="filter-btn" onclick="showAdminTab('gym',this)">🏋️ Academia</button>
+      <button class="filter-btn" onclick="showAdminTab('gym',this)">🏋️ Func./Academia</button>
       <button class="filter-btn" onclick="showAdminTab('food',this)">🥗 Alimentação</button>
       <button class="filter-btn" onclick="showAdminTab('presenca',this)">📅 Presença</button>
+      <button class="filter-btn" onclick="showAdminTab('desafio',this)">🍎 Desafio</button>
+      <button class="filter-btn" onclick="showAdminTab('usuarios',this)">👥 Usuários</button>
     </div>
     <div id="adminContent"><div class="loading"><div class="spinner"></div>Carregando...</div></div>
   </div>
@@ -350,6 +358,9 @@ let adminToken     = sessionStorage.getItem('ds_admin_token') || null;
 let todayState     = {};
 let adminData      = null;
 let activeAdminTab = 'geral';
+let rankingData    = null;
+let rankingFilter  = 'geral';
+let adminUsers     = [];
 
 // Escapa HTML para evitar XSS ao inserir dados do usuário em innerHTML
 function esc(s) {
@@ -525,17 +536,17 @@ function renderToday() {
   fb.classList.toggle('done', !!s.food);
 
   document.getElementById('todayPts').textContent = pts;
-  const done = [s.cardio && 'cardio', s.gym && 'academia', s.food && 'alimentação'].filter(Boolean);
+  const done = [s.cardio && 'cardio', s.gym && 'funcional', s.food && 'alimentação'].filter(Boolean);
   document.getElementById('todayActs').textContent = done.length ? '✓ ' + done.join(' · ') : 'Nenhuma atividade ainda';
 }
 
 // ── BONUS DAYS ────────────────────────────────────────
 async function renderBonusDays() {
   const el     = document.getElementById('bonusDays');
-  const labels = ['S', 'T', 'Q', 'Q', 'S'];
+  const labels = ['S', 'T', 'Q', 'Q', 'S', 'S', 'D'];
   const now    = new Date();
   const dow    = now.getDay() === 0 ? 7 : now.getDay();
-  const weekDates = Array.from({ length: 5 }, (_, i) => {
+  const weekDates = Array.from({ length: 7 }, (_, i) => {
     const d = new Date(now);
     d.setDate(now.getDate() - (dow - (i + 1)));
     return d.toISOString().split('T')[0];
@@ -581,11 +592,25 @@ async function toggleActivity(type) {
 async function loadRanking() {
   document.getElementById('rankingList').innerHTML = '<div class="loading"><div class="spinner"></div>Carregando...</div>';
   try {
-    const r = await apiFetch('?action=ranking');
-    renderRanking(r.ranking || []);
+    const r  = await apiFetch('?action=ranking');
+    rankingData = r;
+    renderRankingByFilter();
   } catch(e) {
     document.getElementById('rankingList').innerHTML = '<div class="empty"><span class="empty-ico">⚠️</span>Erro ao carregar.</div>';
   }
+}
+
+function setRankingFilter(type, btn) {
+  rankingFilter = type;
+  document.querySelectorAll('#rankingFilters .filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  if (rankingData) renderRankingByFilter();
+}
+
+function renderRankingByFilter() {
+  const keyMap = { geral: 'ranking', cardio: 'cardioRanking', gym: 'gymRanking', food: 'foodRanking' };
+  const data   = rankingData[keyMap[rankingFilter]] || [];
+  renderRanking(rankingFilter === 'geral' ? data : data.slice(0, 10));
 }
 
 function renderRanking(ranking) {
@@ -621,7 +646,7 @@ function renderProfile(d) {
   const ini       = esc(session.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase());
   const history   = d.history || [];
   const SHOW_INIT = 14;
-  const actLabels = { cardio: '🏃 Cardio', gym: '🏋️ Academia', food: '🥗 Alimentação' };
+  const actLabels = { cardio: '🏃 Cardio', gym: '🏋️ Func./Academia', food: '🥗 Alimentação' };
 
   const makeHistRow = row => {
     const chips = (row.activities || []).map(a => `<span class="hist-chip ${esc(a)}">${esc(actLabels[a] || a)}</span>`).join('');
@@ -764,14 +789,17 @@ function renderAdminTab(tab) {
   const el     = document.getElementById('adminContent');
   const medals = ['🥇', '🥈', '🥉'], mc = ['gold', 'silver', 'bronze'];
 
+  if (tab === 'desafio')  { renderAdminDesafio(el); return; }
+  if (tab === 'usuarios') { renderAdminUsuarios(el); return; }
+
   if (tab === 'presenca') {
-    const labels = ['S', 'T', 'Q', 'Q', 'S'];
+    const labels = ['S', 'T', 'Q', 'Q', 'S', 'S', 'D'];
     const rows = (adminData.weekPresence || []).map(p => {
-      const dots = (p.days || [false, false, false, false, false]).map((ok, i) => `<div class="pd ${ok ? 'ok' : ''}">${labels[i]}</div>`).join('');
+      const dots = (p.days || [false,false,false,false,false,false,false]).map((ok, i) => `<div class="pd ${ok ? 'ok' : ''}">${labels[i]}</div>`).join('');
       return `<div class="presence-row">
         <div class="presence-name">${esc(p.name)}</div>
         <div class="presence-days">${dots}</div>
-        <div style="font-size:13px;font-weight:700;color:var(--g600);margin-left:6px">${(p.days || []).filter(Boolean).length}/5</div>
+        <div style="font-size:13px;font-weight:700;color:var(--g600);margin-left:6px">${(p.days || []).filter(Boolean).length}/7</div>
       </div>`;
     }).join('');
     el.innerHTML = `<p class="section-title">Presença esta semana</p>${rows || '<div class="empty">Nenhum dado</div>'}`;
@@ -779,7 +807,7 @@ function renderAdminTab(tab) {
   }
 
   const keyMap = { geral: 'ranking', cardio: 'cardioRanking', gym: 'gymRanking', food: 'foodRanking' };
-  const lblMap = { geral: '🏆 Top 10 Geral', cardio: '🏃 Top Cardio', gym: '🏋️ Top Academia', food: '🥗 Top Alimentação' };
+  const lblMap = { geral: '🏆 Top 10 Geral', cardio: '🏃 Top Cardio', gym: '🏋️ Top Funcional', food: '🥗 Top Alimentação' };
   const data   = (adminData[keyMap[tab]] || []).slice(0, 10);
   const rows   = data.map((p, i) => {
     const ini = esc(p.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase());
@@ -830,6 +858,132 @@ function toast(msg, isErr) {
   t.className   = 'toast' + (isErr ? ' error' : '');
   t.classList.add('show');
   setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// ── ADMIN DESAFIO ─────────────────────────────────────
+async function renderAdminDesafio(el) {
+  el.innerHTML = '<div class="loading"><div class="spinner"></div>Carregando...</div>';
+  try {
+    const r       = await apiFetch('?action=config');
+    const current = esc(r.desafio_alimentar || '');
+    el.innerHTML  = `
+      <p class="section-title">Desafio alimentar da semana</p>
+      <div style="background:white;border-radius:var(--rlg);padding:16px;border:1px solid var(--gray100)">
+        <label class="field-label">Texto do desafio</label>
+        <textarea id="desafioText" class="field" rows="4" style="resize:vertical;height:auto">${current}</textarea>
+        <div class="err-msg" id="desafioErr"></div>
+        <button class="btn" id="saveDesafioBtn" onclick="saveDesafio()">Salvar</button>
+      </div>`;
+  } catch(e) {
+    el.innerHTML = '<div class="empty"><span class="empty-ico">⚠️</span>Erro ao carregar.</div>';
+  }
+}
+
+async function saveDesafio() {
+  const textEl = document.getElementById('desafioText');
+  const btn    = document.getElementById('saveDesafioBtn');
+  const err    = document.getElementById('desafioErr');
+  const text   = textEl ? textEl.value.trim() : '';
+  err.classList.remove('show');
+  if (!text) { err.textContent = 'O desafio não pode estar vazio.'; err.classList.add('show'); return; }
+  btn.disabled = true; btn.textContent = 'Salvando...';
+  try {
+    const r = await apiPost({ action: 'adminSetConfig', adminToken, key: 'desafio_alimentar', value: text });
+    if (r.auth === false) { show('adminLoginScreen'); return; }
+    if (r.success) { toast('✓ Desafio atualizado!'); }
+    else { err.textContent = r.error || 'Erro ao salvar.'; err.classList.add('show'); }
+  } catch(e) { err.textContent = 'Sem conexão.'; err.classList.add('show'); }
+  btn.disabled = false; btn.textContent = 'Salvar';
+}
+
+// ── ADMIN USUÁRIOS ────────────────────────────────────
+function renderAdminUsuarios(el) {
+  adminUsers = adminData.userList || adminData.ranking || [];
+  const rows = adminUsers.map((u, i) => {
+    const ini = esc(u.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase());
+    const pts = u.totalPoints !== undefined ? u.totalPoints : (u.points || 0);
+    return `
+    <div class="presence-row" style="flex-wrap:wrap;gap:8px;padding:12px 0">
+      <div style="display:flex;align-items:center;gap:10px;width:100%">
+        <div class="rank-av">${ini}</div>
+        <div style="flex:1">
+          <div style="font-size:14px;font-weight:600">${esc(u.name)}</div>
+          <div style="font-size:12px;color:var(--gray400)">${pts} pts · desde ${fmtDate(u.since||'')}</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:6px;width:100%">
+        <button class="btn outline" style="flex:1;padding:8px;font-size:12px" onclick="toggleUserProfile(${i})">Ver perfil</button>
+        <button class="btn outline" style="flex:1;padding:8px;font-size:12px" onclick="toggleResetPass(${i})">Resetar senha</button>
+      </div>
+      <div id="adminUserProfile_${i}" style="display:none;width:100%;margin-top:4px"></div>
+      <div id="adminResetPass_${i}" style="display:none;width:100%;margin-top:4px">
+        <input type="password" id="adminNewPass_${i}" class="field" placeholder="Nova senha (mín. 4 caracteres)" style="margin-bottom:6px">
+        <button class="btn" style="padding:10px;font-size:13px" onclick="doAdminResetPass(${i})">Confirmar reset</button>
+      </div>
+    </div>`;
+  }).join('');
+  el.innerHTML = `<p class="section-title">Participantes (${adminUsers.length})</p>
+    <div style="display:flex;flex-direction:column">${rows || '<div class="empty">Nenhum participante ainda</div>'}</div>`;
+}
+
+async function toggleUserProfile(idx) {
+  const el = document.getElementById('adminUserProfile_' + idx);
+  if (!el) return;
+  if (el.style.display !== 'none') { el.style.display = 'none'; return; }
+  el.style.display = 'block';
+  el.innerHTML = '<div class="loading" style="padding:12px 0"><div class="spinner"></div>Carregando...</div>';
+  const name = adminUsers[idx] && adminUsers[idx].name;
+  if (!name) return;
+  try {
+    const r = await apiFetch(`?action=adminGetProfile&name=${enc(name)}&adminToken=${enc(adminToken || '')}`);
+    if (r.auth === false) { show('adminLoginScreen'); return; }
+    const actLabels = { cardio: '🏃 Cardio', gym: '🏋️ Func./Academia', food: '🥗 Alimentação' };
+    const history   = (r.history || []).slice(0, 10).map(row => {
+      const chips = (row.activities || []).map(a => `<span class="hist-chip ${esc(a)}">${esc(actLabels[a] || a)}</span>`).join('');
+      return `<div class="hist-row"><div class="hist-date">${fmtDate(row.date)}</div><div class="hist-acts">${chips}</div><div class="hist-pts">+${row.points}</div></div>`;
+    }).join('');
+    el.innerHTML = `
+      <div style="background:var(--g50);border-radius:var(--rmd);padding:12px;border:1px solid var(--g100)">
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:8px">
+          <div class="profile-stat" style="background:var(--g800)"><div class="profile-stat-val">${r.totalPoints||0}</div><div class="profile-stat-lbl">Pontos</div></div>
+          <div class="profile-stat" style="background:var(--g800)"><div class="profile-stat-val">${r.totalDays||0}</div><div class="profile-stat-lbl">Dias</div></div>
+          <div class="profile-stat" style="background:var(--g800)"><div class="profile-stat-val">#${r.rank||'—'}</div><div class="profile-stat-lbl">Posição</div></div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:8px;text-align:center;font-size:12px">
+          <div><div style="font-weight:700;color:var(--b400)">${r.cardioCount||0}</div><div style="color:var(--gray400)">🏃 Cardios</div></div>
+          <div><div style="font-weight:700;color:var(--g600)">${r.gymCount||0}</div><div style="color:var(--gray400)">🏋️ Treinos</div></div>
+          <div><div style="font-weight:700;color:var(--a400)">${r.foodCount||0}</div><div style="color:var(--gray400)">🥗 Aliment.</div></div>
+        </div>
+        <p class="section-title" style="margin-bottom:4px">Últimos 10 dias</p>
+        ${history || '<p style="font-size:13px;color:var(--gray400);padding:8px 0">Sem atividades registradas.</p>'}
+      </div>`;
+  } catch(e) {
+    el.innerHTML = '<p style="font-size:13px;color:var(--gray400);padding:8px 0">Erro ao carregar perfil.</p>';
+  }
+}
+
+function toggleResetPass(idx) {
+  const el = document.getElementById('adminResetPass_' + idx);
+  if (!el) return;
+  el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+
+async function doAdminResetPass(idx) {
+  const name   = adminUsers[idx] && adminUsers[idx].name;
+  const passEl = document.getElementById('adminNewPass_' + idx);
+  if (!name || !passEl) return;
+  const newPass = passEl.value;
+  if (newPass.length < 4) { toast('⚠️ Mínimo 4 caracteres.', true); return; }
+  try {
+    const hash = await sha256(newPass);
+    const r    = await apiPost({ action: 'adminResetPass', adminToken, name, newPassHash: hash });
+    if (r.auth === false) { show('adminLoginScreen'); return; }
+    if (r.success) {
+      passEl.value = '';
+      toggleResetPass(idx);
+      toast(`✓ Senha de ${name} resetada!`);
+    } else { toast('⚠️ ' + (r.error || 'Erro ao resetar.'), true); }
+  } catch(e) { toast('⚠️ Sem conexão.', true); }
 }
 
 init();

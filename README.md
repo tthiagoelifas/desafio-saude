@@ -14,7 +14,7 @@ App de desafio de saúde em grupo, 100% no navegador via GitHub Pages. Participa
   - 🏃 Cardio (mínimo 1km)
   - 🏋️ Atividade física (academia/treino)
   - 🥗 Desafio alimentar da semana
-- **Ranking** do grupo em tempo real com medalhas 🥇🥈🥉
+- **Ranking por categoria** com filtros: 🏆 Geral · 🏃 Cardio · 🏋️ Academia · 🥗 Alimentação
 - **Perfil individual** com pontos totais, dias ativos, posição no ranking e histórico completo
 - **Bônus automático** de +3 pontos por semana completa (5 dias com pelo menos 1 atividade)
 - **Troca de senha** e exclusão de conta
@@ -24,7 +24,9 @@ App de desafio de saúde em grupo, 100% no navegador via GitHub Pages. Participa
 - Dashboard com totais: participantes, atividades, ativos hoje e na semana
 - Top 10 por categoria: geral, cardio, academia e alimentação
 - Presença semanal de todos os participantes
-- **Desafio alimentar** configurável direto na planilha (sem editar código)
+- **Desafio alimentar** editável direto pela aba "Desafio" no painel admin (sem mexer na planilha)
+- **Resetar senha** de qualquer participante pela aba "Usuários"
+- **Ver perfil detalhado** de cada participante (pontos por categoria, histórico dos últimos 10 dias, posição no ranking)
 
 ---
 
@@ -156,7 +158,9 @@ O bônus é calculado automaticamente no backend: toda semana ISO com pelo menos
 
 | Tarefa | Como fazer |
 |---|---|
-| Trocar desafio alimentar | Editar célula `desafio_alimentar` na aba **Config** da planilha |
+| Trocar desafio alimentar | Na tela admin → aba **Desafio** → editar e salvar |
+| Resetar senha de usuário | Na tela admin → aba **Usuários** → botão "Resetar senha" |
+| Ver progresso de um participante | Na tela admin → aba **Usuários** → botão "Ver perfil" |
 | Trocar senha admin | Editar `ADMIN_PASS` no `apps-script.js` e reimplantar |
 | Atualizar o código | Editar `apps-script.js` → Apps Script → **Implantar → Gerenciar implantações → lápis → Nova versão** |
 

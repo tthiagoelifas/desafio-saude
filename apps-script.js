@@ -15,8 +15,9 @@ function doGet(e) {
   const p      = (e && e.parameter) ? e.parameter : {};
   const action = p.action || '';
 
-  if (action === 'ranking')      return getRanking();
-  if (action === 'today')        return getToday(p.name, p.date, p.token);
+  if (action === 'ranking')         return getRanking();
+  if (action === 'adminGetProfile') return adminGetUserProfile(p);
+  if (action === 'today')           return getToday(p.name, p.date, p.token);
   if (action === 'weekpresence') return getWeekPresence(p.name, p.dates, p.token);
   if (action === 'profile')      return getProfile(p.name, p.token);
   if (action === 'admin')        return getAdminDashboard(p.adminToken);
@@ -37,6 +38,8 @@ function doPost(e) {
     if (action === 'deleteUser')     return deleteUser(d);
     if (action === 'adminLogin')     return adminLogin(d);
     if (action === 'changePassword') return changePassword(d);
+    if (action === 'adminSetConfig') return adminSetConfig(d);
+    if (action === 'adminResetPass') return adminResetPassword(d);
 
     return json({ success: false, error: 'ação desconhecida' });
   } catch (err) {
@@ -261,7 +264,12 @@ function deleteUser(d) {
 function getRanking() {
   const rows   = getActSheet().getDataRange().getValues();
   const scores = buildScores(rows);
-  return json({ ranking: toRankingArray(scores, 'total') });
+  return json({
+    ranking:       toRankingArray(scores, 'total'),
+    cardioRanking: toRankingArray(scores, 'cardio'),
+    gymRanking:    toRankingArray(scores, 'gym'),
+    foodRanking:   toRankingArray(scores, 'food')
+  });
 }
 
 // ══════════════════════════════════════════════════════
@@ -298,6 +306,15 @@ function getAdminDashboard(adminToken) {
     days: weekDates.map(d => !!(presMap[name] && presMap[name].has(d)))
   })).sort((a, b) => b.days.filter(Boolean).length - a.days.filter(Boolean).length);
 
+  const userList = uRows.slice(1)
+    .filter(r => r[0])
+    .map(r => {
+      const nm = r[0].toString();
+      const sc = scores[nm] || { total: 0, actCount: 0 };
+      return { name: nm, since: r[2] ? r[2].toString().split('T')[0] : '', totalPoints: sc.total, actCount: sc.actCount || 0 };
+    })
+    .sort((a, b) => b.totalPoints - a.totalPoints);
+
   return json({
     totalParticipants: participants.size,
     totalActivities:   actRows.length - 1,
@@ -307,7 +324,8 @@ function getAdminDashboard(adminToken) {
     cardioRanking:     toRankingArray(scores, 'cardio'),
     gymRanking:        toRankingArray(scores, 'gym'),
     foodRanking:       toRankingArray(scores, 'food'),
-    weekPresence
+    weekPresence,
+    userList
   });
 }
 
@@ -351,7 +369,7 @@ function getCurrentWeekDates() {
   // Criar data ao meio-dia para evitar problemas com DST
   const today    = new Date(todayStr + 'T12:00:00');
   const dow      = today.getDay() === 0 ? 7 : today.getDay();
-  return Array.from({ length: 5 }, (_, i) => {
+  return Array.from({ length: 7 }, (_, i) => {
     const d = new Date(today);
     d.setDate(today.getDate() - (dow - (i + 1)));
     return Utilities.formatDate(d, tz, 'yyyy-MM-dd');
@@ -412,6 +430,81 @@ function getConfigSheet() {
     s.setFrozenRows(1);
   }
   return s;
+}
+
+function adminSetConfig(d) {
+  if (!validateAdminToken(d.adminToken)) return json({ auth: false });
+  if (!d.key || d.value === undefined)   return json({ success: false, error: 'Campos obrigatórios.' });
+
+  const sheet = getConfigSheet();
+  const rows  = sheet.getDataRange().getValues();
+  for (let i = 1; i < rows.length; i++) {
+    if (rows[i][0].toString() === d.key) {
+      sheet.getRange(i + 1, 2).setValue(d.value);
+      return json({ success: true });
+    }
+  }
+  sheet.appendRow([d.key, d.value]);
+  return json({ success: true });
+}
+
+function adminResetPassword(d) {
+  if (!validateAdminToken(d.adminToken)) return json({ auth: false });
+  if (!d.name || !d.newPassHash)         return json({ success: false, error: 'Campos obrigatórios.' });
+
+  const sheet = getUserSheet();
+  const rows  = sheet.getDataRange().getValues();
+  for (let i = 1; i < rows.length; i++) {
+    if (rows[i][0].toString().toLowerCase() === d.name.toLowerCase()) {
+      sheet.getRange(i + 1, 2).setValue(d.newPassHash);
+      return json({ success: true });
+    }
+  }
+  return json({ success: false, error: 'Usuário não encontrado.' });
+}
+
+function adminGetUserProfile(params) {
+  if (!validateAdminToken(params.adminToken)) return json({ auth: false });
+  if (!params.name)                           return json({ success: false, error: 'Nome obrigatório.' });
+
+  const actRows = getActSheet().getDataRange().getValues();
+  const userRow = findUser(params.name);
+  if (!userRow) return json({ success: false, error: 'Usuário não encontrado.' });
+
+  const since = userRow[2] ? userRow[2].toString().split('T')[0] : '';
+  const lname = params.name.toLowerCase();
+
+  const byDate = {};
+  for (let i = 1; i < actRows.length; i++) {
+    if (actRows[i][1].toString().toLowerCase() !== lname) continue;
+    const date = actRows[i][3];
+    const act  = actRows[i][2];
+    if (!byDate[date]) byDate[date] = new Set();
+    byDate[date].add(act);
+  }
+
+  const sortedDates = Object.keys(byDate).sort((a, b) => b.localeCompare(a));
+  const history     = sortedDates.map(date => {
+    const acts = Array.from(byDate[date]);
+    return { date, activities: acts, points: acts.length };
+  });
+
+  const scores  = buildScores(actRows);
+  const myScore = scores[userRow[0]] || { total: 0, actCount: 0, cardio: 0, gym: 0, food: 0 };
+  const ranking = toRankingArray(scores, 'total');
+  const rank    = ranking.findIndex(u => u.name.toLowerCase() === lname) + 1;
+
+  return json({
+    name:        userRow[0],
+    since,
+    totalPoints: myScore.total,
+    totalDays:   Object.keys(byDate).length,
+    cardioCount: myScore.cardio || 0,
+    gymCount:    myScore.gym    || 0,
+    foodCount:   myScore.food   || 0,
+    rank,
+    history
+  });
 }
 
 function json(obj) {
