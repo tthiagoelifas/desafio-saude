@@ -385,9 +385,11 @@ let adminToken     = sessionStorage.getItem('ds_admin_token') || null;
 let todayState     = {};
 let adminData      = null;
 let activeAdminTab = 'geral';
-let rankingData    = null;
-let rankingFilter  = 'geral';
-let adminUsers     = [];
+let rankingData       = null;
+let rankingFilter     = 'geral';
+let adminUsers        = [];
+let weekDatesCache    = [];
+let weekPresenceCache = {};
 
 // Escapa HTML para evitar XSS ao inserir dados do usuário em innerHTML
 function esc(s) {
@@ -513,34 +515,33 @@ function showMain() {
   const days   = ['domingo','segunda-feira','terça-feira','quarta-feira','quinta-feira','sexta-feira','sábado'];
   const months = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
   document.getElementById('dateLabel').textContent = `${days[now.getDay()]}, ${now.getDate()} de ${months[now.getMonth()]}`;
-  loadFoodChallenge();
-  loadTodayState();
-  renderBonusDays();
+  loadInitData();
 }
 
-async function loadFoodChallenge() {
-  try {
-    const r = await apiFetch('?action=config');
-    document.getElementById('foodChallenge').textContent =
-      r.desafio_alimentar || 'Sem desafio alimentar esta semana.';
-  } catch(e) {
-    document.getElementById('foodChallenge').textContent = 'Erro ao carregar desafio.';
-  }
-}
+async function loadInitData() {
+  const now = new Date();
+  const dow = now.getDay() === 0 ? 7 : now.getDay();
+  weekDatesCache = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(now);
+    d.setDate(now.getDate() - (dow - (i + 1)));
+    return d.toISOString().split('T')[0];
+  });
 
-// ── LOAD TODAY FROM SHEETS ────────────────────────────
-async function loadTodayState() {
   setCardsLoading(true);
   try {
-    const r = await apiFetch(`?action=today&name=${enc(session.name)}&date=${TODAY}&token=${enc(session.token)}`);
+    const r = await apiFetch(`?action=init&name=${enc(session.name)}&date=${TODAY}&dates=${weekDatesCache.join(',')}&token=${enc(session.token)}`);
     if (r.auth === false) { doLogout(); return; }
-    todayState = r.activities || {};
+    document.getElementById('foodChallenge').textContent = r.desafio_alimentar || 'Sem desafio alimentar esta semana.';
+    todayState        = r.activities || {};
+    weekPresenceCache = r.presence   || {};
   } catch(e) {
     toast('⚠️ Erro ao carregar dados', true);
-    todayState = {};
+    todayState        = {};
+    weekPresenceCache = {};
   }
   setCardsLoading(false);
   renderToday();
+  renderBonusDaysLocal();
 }
 
 function setCardsLoading(on) {
@@ -569,29 +570,14 @@ function renderToday() {
 }
 
 // ── BONUS DAYS ────────────────────────────────────────
-async function renderBonusDays() {
+function renderBonusDaysLocal() {
   const el     = document.getElementById('bonusDays');
   const labels = ['S', 'T', 'Q', 'Q', 'S', 'S', 'D'];
-  const now    = new Date();
-  const dow    = now.getDay() === 0 ? 7 : now.getDay();
-  const weekDates = Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(now);
-    d.setDate(now.getDate() - (dow - (i + 1)));
-    return d.toISOString().split('T')[0];
-  });
-
-  let presence = {};
-  try {
-    const r  = await apiFetch(`?action=weekpresence&name=${enc(session.name)}&dates=${weekDates.join(',')}&token=${enc(session.token)}`);
-    presence = r.presence || {};
-  } catch(e) {}
-
-  el.innerHTML = weekDates.map((date, i) => {
-    const cls = date === TODAY ? 'today-dot' : (presence[date] ? 'done' : '');
+  el.innerHTML = weekDatesCache.map((date, i) => {
+    const cls = date === TODAY ? 'today-dot' : (weekPresenceCache[date] ? 'done' : '');
     return `<div class="day-dot ${cls}">${labels[i]}</div>`;
   }).join('');
-
-  const completedPrev = weekDates.filter(d => d !== TODAY && presence[d]).length;
+  const completedPrev = weekDatesCache.filter(d => d !== TODAY && weekPresenceCache[d]).length;
   const todayDone     = Object.values(todayState).some(Boolean);
   document.getElementById('todayBonus').style.display = (completedPrev + (todayDone ? 1 : 0)) >= 5 ? 'block' : 'none';
 }
@@ -599,21 +585,32 @@ async function renderBonusDays() {
 // ── TOGGLE ACTIVITY ───────────────────────────────────
 async function toggleActivity(type) {
   const wasDone = !!todayState[type];
-  setCardsLoading(true);
+  // Atualiza UI imediatamente (otimista)
+  wasDone ? delete todayState[type] : (todayState[type] = true);
+  renderToday();
+  renderBonusDaysLocal();
   try {
     const r = await apiPost({ action: 'activity', name: session.name, token: session.token, activity: type, date: TODAY, remove: wasDone });
     if (r.auth === false) { doLogout(); return; }
     if (r.success) {
-      wasDone ? delete todayState[type] : (todayState[type] = true);
       if (!wasDone) {
         const msgs = { cardio: '🏃 Cardio registrado!', gym: '🏋️ Atividade registrada!', food: '🥗 Alimentação registrada!' };
         toast(msgs[type]);
       }
-    } else { toast('⚠️ ' + (r.error || 'Erro, tente novamente'), true); }
-  } catch(e) { toast('⚠️ Sem conexão', true); }
-  setCardsLoading(false);
-  renderToday();
-  renderBonusDays();
+    } else {
+      // Reverte em caso de erro do servidor
+      wasDone ? (todayState[type] = true) : delete todayState[type];
+      renderToday();
+      renderBonusDaysLocal();
+      toast('⚠️ ' + (r.error || 'Erro, tente novamente'), true);
+    }
+  } catch(e) {
+    // Reverte em caso de falha de rede
+    wasDone ? (todayState[type] = true) : delete todayState[type];
+    renderToday();
+    renderBonusDaysLocal();
+    toast('⚠️ Sem conexão', true);
+  }
 }
 
 // ── RANKING ───────────────────────────────────────────
