@@ -210,8 +210,8 @@ body{font-family:'DM Sans',sans-serif;background:var(--g50);color:var(--gray900)
     <p class="auth-sub">Entre com seu nome e senha.</p>
     <div class="auth-form">
       <div class="err-msg" id="loginErr">Nome ou senha incorretos.</div>
-      <label class="field-label">Nome</label>
-      <input type="text" id="loginName" class="field" placeholder="Seu nome..." autocomplete="username">
+      <label class="field-label">Nome de usuário</label>
+      <input type="text" id="loginName" class="field" placeholder="Seu usuário..." autocomplete="username">
       <label class="field-label">Senha</label>
       <input type="password" id="loginPass" class="field" placeholder="Sua senha..." autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
       <button class="btn" id="loginBtn" onclick="doLogin()">Entrar</button>
@@ -227,11 +227,11 @@ body{font-family:'DM Sans',sans-serif;background:var(--g50);color:var(--gray900)
   <div class="auth-wrap">
     <div class="auth-icon">✨</div>
     <h1 class="auth-title">Criar conta</h1>
-    <p class="auth-sub">Preencha seus dados para participar do desafio.</p>
+    <p class="auth-sub">Escolha um usuário que você vai lembrar na hora de entrar.</p>
     <div class="auth-form">
       <div class="err-msg" id="registerErr">Verifique os campos e tente novamente.</div>
-      <label class="field-label">Seu nome completo</label>
-      <input type="text" id="regName" class="field" placeholder="Ex: Ana Silva" autocomplete="name">
+      <label class="field-label">Nome de usuário</label>
+      <input type="text" id="regName" class="field" placeholder="Ex: ana.silva ou AnaSilva" autocomplete="username">
       <label class="field-label">Senha</label>
       <input type="password" id="regPass" class="field" placeholder="Mínimo 4 caracteres..." autocomplete="new-password">
       <label class="field-label">Confirmar senha</label>
