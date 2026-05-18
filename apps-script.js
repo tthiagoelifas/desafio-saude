@@ -149,7 +149,7 @@ function getToday(name, date, token) {
   const activities = {};
   const lname      = name.toLowerCase();
   for (let i = 1; i < rows.length; i++) {
-    if (rows[i][1].toString().toLowerCase() === lname && rows[i][3] === date) {
+    if (rows[i][1].toString().toLowerCase() === lname && normalizeDate(rows[i][3]) === date) {
       activities[rows[i][2]] = true;
     }
   }
@@ -166,7 +166,7 @@ function saveActivity(d) {
 
   if (remove) {
     for (let i = rows.length - 1; i >= 1; i--) {
-      if (rows[i][1].toString().toLowerCase() === lname && rows[i][2] === d.activity && rows[i][3] === d.date) {
+      if (rows[i][1].toString().toLowerCase() === lname && rows[i][2] === d.activity && normalizeDate(rows[i][3]) === d.date) {
         sheet.deleteRow(i + 1);
         return json({ success: true, action: 'removed' });
       }
@@ -175,7 +175,7 @@ function saveActivity(d) {
   }
 
   for (let i = 1; i < rows.length; i++) {
-    if (rows[i][1].toString().toLowerCase() === lname && rows[i][2] === d.activity && rows[i][3] === d.date) {
+    if (rows[i][1].toString().toLowerCase() === lname && rows[i][2] === d.activity && normalizeDate(rows[i][3]) === d.date) {
       return json({ success: true, action: 'already_exists' });
     }
   }
@@ -191,8 +191,9 @@ function getWeekPresence(name, datesStr, token) {
   const presence = {};
   const lname    = name.toLowerCase();
   for (let i = 1; i < rows.length; i++) {
-    if (rows[i][1].toString().toLowerCase() === lname && dates.includes(rows[i][3])) {
-      presence[rows[i][3]] = true;
+    const nd = normalizeDate(rows[i][3]);
+    if (rows[i][1].toString().toLowerCase() === lname && dates.includes(nd)) {
+      presence[nd] = true;
     }
   }
   return json({ presence });
@@ -213,7 +214,7 @@ function getProfile(name, token) {
   const byDate = {};
   for (let i = 1; i < actRows.length; i++) {
     if (actRows[i][1].toString().toLowerCase() !== lname) continue;
-    const date = actRows[i][3];
+    const date = normalizeDate(actRows[i][3]);
     const act  = actRows[i][2];
     if (!byDate[date]) byDate[date] = new Set();
     byDate[date].add(act);
@@ -290,13 +291,14 @@ function getAdminDashboard(adminToken) {
   const activeWeekSet  = new Set();
   actRows.slice(1).forEach(r => {
     if (!r[1]) return;
-    if (r[3] === todayStr)          activeTodaySet.add(r[1]);
-    if (weekDates.includes(r[3]))   activeWeekSet.add(r[1]);
+    const nd = normalizeDate(r[3]);
+    if (nd === todayStr)          activeTodaySet.add(r[1]);
+    if (weekDates.includes(nd))   activeWeekSet.add(r[1]);
   });
 
   const presMap = {};
   actRows.slice(1).forEach(r => {
-    const name = r[1], date = r[3];
+    const name = r[1], date = normalizeDate(r[3]);
     if (!name || !weekDates.includes(date)) return;
     if (!presMap[name]) presMap[name] = new Set();
     presMap[name].add(date);
@@ -333,10 +335,18 @@ function getAdminDashboard(adminToken) {
 //  HELPERS
 // ══════════════════════════════════════════════════════
 
+// Sheets pode retornar a coluna Data como objeto Date em vez de string
+// dependendo da formatação da planilha — sempre normalizar antes de comparar
+function normalizeDate(val) {
+  if (!val && val !== 0) return '';
+  if (val instanceof Date) return Utilities.formatDate(val, 'America/Sao_Paulo', 'yyyy-MM-dd');
+  return val.toString().trim();
+}
+
 function buildScores(rows) {
   const map = {};
   rows.slice(1).forEach(r => {
-    const name = r[1], act = r[2], date = r[3];
+    const name = r[1], act = r[2], date = normalizeDate(r[3]);
     if (!name || !act || !date) return;
     if (!map[name]) map[name] = { total: 0, cardio: 0, gym: 0, food: 0, actCount: 0, weekDays: {} };
     map[name][act]      = (map[name][act] || 0) + 1;
@@ -477,7 +487,7 @@ function adminGetUserProfile(params) {
   const byDate = {};
   for (let i = 1; i < actRows.length; i++) {
     if (actRows[i][1].toString().toLowerCase() !== lname) continue;
-    const date = actRows[i][3];
+    const date = normalizeDate(actRows[i][3]);
     const act  = actRows[i][2];
     if (!byDate[date]) byDate[date] = new Set();
     byDate[date].add(act);
