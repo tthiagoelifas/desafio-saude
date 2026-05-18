@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Desafio Saúde 🌿</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@400;500;600&display=swap');
+:root{
+  --g50:#f0faf4;--g100:#d4f0e0;--g200:#a8dfc0;--g400:#4cb87a;--g600:#2a7a4f;--g800:#1a4d32;--g900:#0e2e1e;
+  --a100:#fdf0d4;--a400:#e8a020;--r400:#e04040;--r100:#fce8e8;
+  --b100:#e4f0fa;--b400:#3a8ad4;
+  --gray50:#f8f8f6;--gray100:#ededea;--gray200:#d8d8d4;--gray400:#8a8a84;--gray700:#3a3a36;--gray900:#1c1c18;
+  --rmd:10px;--rlg:16px;--rxl:24px;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'DM Sans',sans-serif;background:var(--g50);color:var(--gray900);min-height:100vh;max-width:430px;margin:0 auto;}
+.screen{display:none;}.screen.active{display:block;}
+
+/* ── AUTH SCREENS ── */
+.auth-wrap{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 24px;}
+.auth-icon{font-size:52px;margin-bottom:14px;text-align:center;}
+.auth-title{font-family:'DM Serif Display',serif;font-size:26px;color:var(--g800);margin-bottom:6px;text-align:center;}
+.auth-sub{font-size:14px;color:var(--gray400);margin-bottom:24px;line-height:1.6;text-align:center;}
+.auth-form{width:100%;}
+.field-label{font-size:12px;font-weight:600;color:var(--g600);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px;display:block;}
+.field{width:100%;padding:13px 16px;border-radius:var(--rmd);border:1.5px solid var(--gray200);font-family:inherit;font-size:15px;background:white;color:var(--gray900);outline:none;margin-bottom:14px;}
+.field:focus{border-color:var(--g400);}
+.btn{width:100%;padding:15px;border-radius:var(--rlg);background:var(--g600);color:white;font-family:inherit;font-size:15px;font-weight:600;border:none;cursor:pointer;transition:.15s;margin-bottom:10px;}
+.btn:active{background:var(--g800);transform:scale(.98);}
+.btn:disabled{opacity:.55;cursor:default;transform:none;}
+.btn.outline{background:none;border:1.5px solid var(--gray200);color:var(--gray700);}
+.btn.outline:active{background:var(--gray100);}
+.btn.danger{background:var(--r400);}
+.auth-switch{font-size:14px;color:var(--gray400);text-align:center;margin-top:4px;}
+.auth-switch a{color:var(--g600);font-weight:600;cursor:pointer;text-decoration:none;}
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+
+/* ── ERROR MSG ── */
+.err-msg{background:var(--r100);border:1px solid #f5b0b0;border-radius:var(--rmd);padding:10px 14px;font-size:13px;color:#8a2020;margin-bottom:14px;display:none;}
+.err-msg.show{display:block;}
+
+/* ── HEADER ── */
+.header{background:var(--g800);padding:18px 18px 14px;position:relative;overflow:hidden;}
+.header::before{content:'';position:absolute;right:-20px;top:-30px;width:120px;height:120px;border-radius:50%;background:rgba(255,255,255,.05);}
+.header-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
+.header-badge{font-size:11px;font-weight:600;color:var(--g200);background:rgba(255,255,255,.1);padding:4px 10px;border-radius:20px;text-transform:uppercase;letter-spacing:.06em;}
+.header-pills{display:flex;gap:5px;}
+.act-pill{font-size:11px;font-weight:600;padding:4px 9px;border-radius:20px;background:rgba(255,255,255,.1);color:rgba(255,255,255,.4);transition:.3s;}
+.act-pill.done{background:rgba(76,184,122,.3);color:var(--g200);}
+.header-title{font-family:'DM Serif Display',serif;font-size:22px;color:white;margin-bottom:2px;}
+.header-sub{font-size:13px;color:var(--g200);}
+.header-user{font-size:12px;color:rgba(255,255,255,.5);margin-top:2px;}
+.header-user span{color:white;font-weight:600;}
+.header-user button{background:none;border:none;font-size:11px;color:rgba(255,255,255,.35);cursor:pointer;text-decoration:underline;font-family:inherit;margin-left:6px;}
+
+/* ── TABS ── */
+.tabs{display:flex;background:white;border-bottom:1px solid var(--gray100);position:sticky;top:0;z-index:10;}
+.tab-btn{flex:1;padding:13px 6px;font-family:inherit;font-size:12px;font-weight:500;background:none;border:none;cursor:pointer;color:var(--gray400);border-bottom:2.5px solid transparent;transition:.15s;}
+.tab-btn.active{color:var(--g600);border-bottom-color:var(--g600);}
+
+/* ── CONTENT ── */
+.content{padding:16px 15px 90px;}
+
+/* ── TODAY ── */
+.today-bar{background:var(--g800);border-radius:var(--rlg);padding:14px 16px;margin-bottom:16px;display:flex;align-items:center;gap:14px;}
+.today-pts{font-size:34px;font-weight:700;color:white;line-height:1;}
+.today-info{flex:1;}
+.today-label{font-size:11px;color:var(--g200);text-transform:uppercase;letter-spacing:.06em;}
+.today-acts{font-size:13px;color:rgba(255,255,255,.65);margin-top:3px;}
+.today-bonus{font-size:11px;color:var(--a400);margin-top:3px;font-weight:600;display:none;}
+.section-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--gray400);margin-bottom:10px;}
+.act-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px;}
+.act-card{background:white;border-radius:var(--rlg);border:1.5px solid var(--gray100);padding:15px 13px;cursor:pointer;transition:.15s;user-select:none;position:relative;}
+.act-card:active{transform:scale(.97);}
+.act-card.done{border-color:var(--g400);background:var(--g50);}
+.act-card.done::after{content:'✓';position:absolute;top:8px;right:10px;font-size:12px;font-weight:700;color:var(--g400);}
+.act-card.loading-state{opacity:.5;pointer-events:none;}
+.act-emoji{font-size:24px;margin-bottom:7px;display:block;}
+.act-name{font-size:13px;font-weight:600;color:var(--gray700);display:block;margin-bottom:1px;}
+.act-pts{font-size:11px;color:var(--gray400);}
+.act-card.done .act-name{color:var(--g600);}
+.food-card{background:var(--a100);border-radius:var(--rlg);padding:15px;margin-bottom:16px;border:1px solid #f0d088;}
+.food-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--a400);margin-bottom:6px;}
+.food-text{font-size:14px;color:#6b4c10;font-weight:500;line-height:1.5;margin-bottom:10px;}
+.food-btn{padding:9px 18px;border-radius:20px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;border:none;background:var(--a400);color:white;transition:.15s;}
+.food-btn.done{background:var(--g400);}
+.food-btn:disabled{opacity:.6;cursor:default;}
+.bonus-card{background:var(--b100);border-radius:var(--rlg);padding:15px;margin-bottom:16px;border:1px solid #aed4f0;}
+.bonus-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--b400);margin-bottom:6px;}
+.bonus-text{font-size:13px;color:#1a4d88;margin-bottom:10px;line-height:1.5;}
+.bonus-days{display:flex;gap:6px;}
+.day-dot{width:33px;height:33px;border-radius:50%;background:var(--gray100);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:var(--gray400);}
+.day-dot.done{background:var(--g400);color:white;}
+.day-dot.today-dot{background:var(--b400);color:white;}
+
+/* ── RANKING ── */
+.rank-list{display:flex;flex-direction:column;gap:9px;}
+.rank-card{background:white;border-radius:var(--rlg);border:1px solid var(--gray100);padding:13px 15px;display:flex;align-items:center;gap:11px;}
+.rank-card.me{border-color:var(--g400);background:var(--g50);}
+.rank-pos{font-size:13px;font-weight:700;color:var(--gray400);width:22px;text-align:center;flex-shrink:0;}
+.rank-pos.gold{font-size:18px;}.rank-pos.silver{font-size:16px;}.rank-pos.bronze{font-size:16px;}
+.rank-av{width:38px;height:38px;border-radius:50%;background:var(--g100);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:var(--g600);flex-shrink:0;}
+.rank-av.me-av{background:var(--g400);color:white;}
+.rank-info{flex:1;min-width:0;}
+.rank-name{font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.rank-detail{font-size:12px;color:var(--gray400);margin-top:1px;}
+.rank-pts{font-size:20px;font-weight:700;color:var(--g600);flex-shrink:0;}
+.rank-pts-lbl{font-size:10px;color:var(--gray400);text-align:right;}
+
+/* ── PROFILE ── */
+.profile-hero{background:var(--g800);border-radius:var(--rlg);padding:20px;margin-bottom:16px;text-align:center;}
+.profile-av{width:64px;height:64px;border-radius:50%;background:var(--g400);display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:700;color:white;margin:0 auto 10px;}
+.profile-name{font-family:'DM Serif Display',serif;font-size:20px;color:white;margin-bottom:2px;}
+.profile-since{font-size:12px;color:rgba(255,255,255,.5);}
+.profile-stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:12px;}
+.profile-stat{background:rgba(255,255,255,.08);border-radius:var(--rmd);padding:10px 6px;text-align:center;}
+.profile-stat-val{font-size:20px;font-weight:700;color:white;}
+.profile-stat-lbl{font-size:10px;color:rgba(255,255,255,.5);margin-top:2px;}
+.hist-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--gray100);}
+.hist-date{font-size:12px;color:var(--gray400);width:72px;flex-shrink:0;}
+.hist-acts{display:flex;gap:5px;flex:1;}
+.hist-chip{font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;}
+.hist-chip.cardio{background:var(--b100);color:var(--b400);}
+.hist-chip.gym{background:var(--g100);color:var(--g600);}
+.hist-chip.food{background:var(--a100);color:var(--a400);}
+.hist-pts{font-size:13px;font-weight:700;color:var(--g600);flex-shrink:0;}
+
+/* ── ADMIN ── */
+.admin-header{background:var(--gray900);padding:16px;display:flex;justify-content:space-between;align-items:center;}
+.admin-title{font-family:'DM Serif Display',serif;font-size:20px;color:white;}
+.admin-out{font-size:12px;color:var(--gray400);background:none;border:none;cursor:pointer;font-family:inherit;text-decoration:underline;}
+.admin-content{padding:14px 14px 40px;}
+.stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px;}
+.stat-card{background:white;border-radius:var(--rlg);border:1px solid var(--gray100);padding:13px;}
+.stat-val{font-size:26px;font-weight:700;color:var(--g600);}
+.stat-lbl{font-size:12px;color:var(--gray400);margin-top:2px;}
+.filter-group{display:flex;gap:6px;margin-bottom:14px;overflow-x:auto;padding-bottom:2px;}
+.filter-btn{padding:7px 13px;border-radius:20px;font-family:inherit;font-size:12px;font-weight:600;border:1.5px solid var(--gray200);background:white;color:var(--gray700);cursor:pointer;white-space:nowrap;transition:.15s;flex-shrink:0;}
+.filter-btn.active{background:var(--g600);border-color:var(--g600);color:white;}
+.presence-row{display:flex;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid var(--gray100);}
+.presence-name{flex:1;font-size:13px;font-weight:500;}
+.presence-days{display:flex;gap:4px;}
+.pd{width:25px;height:25px;border-radius:50%;background:var(--gray100);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:var(--gray400);}
+.pd.ok{background:var(--g400);color:white;}
+
+/* ── UTILS ── */
+.loading{text-align:center;padding:40px 20px;color:var(--gray400);font-size:14px;}
+.spinner{width:24px;height:24px;border:2.5px solid var(--gray100);border-top-color:var(--g400);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 12px;}
+@keyframes spin{to{transform:rotate(360deg)}}
+.empty{text-align:center;padding:40px 20px;color:var(--gray400);font-size:14px;}
+.empty-ico{font-size:40px;margin-bottom:10px;display:block;}
+.sync-btn{display:flex;align-items:center;gap:6px;background:none;border:1px solid var(--gray200);border-radius:20px;padding:7px 14px;font-size:12px;font-weight:500;color:var(--gray400);cursor:pointer;font-family:inherit;margin:0 auto 14px;transition:.15s;}
+.toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--g800);color:white;padding:11px 22px;border-radius:30px;font-size:13px;font-weight:600;opacity:0;transition:.3s;pointer-events:none;white-space:nowrap;z-index:100;}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+.toast.error{background:var(--r400);}
+.bottom-nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;background:white;border-top:1px solid var(--gray100);display:flex;padding:8px 0 12px;z-index:20;}
+.nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;background:none;border:none;cursor:pointer;padding:4px;font-family:inherit;}
+.nav-ico{font-size:20px;}
+.nav-lbl{font-size:10px;font-weight:600;color:var(--gray400);text-transform:uppercase;letter-spacing:.05em;}
+.nav-btn.active .nav-lbl{color:var(--g600);}
+.divider{height:1px;background:var(--gray100);margin:14px 0;}
+</style>
+</head>
+<body>
+
+<!-- ══ WELCOME ══ -->
+<div id="welcomeScreen" class="screen active">
+  <div class="auth-wrap">
+    <div class="auth-icon">🌿</div>
+    <h1 class="auth-title">Desafio Saúde</h1>
+    <p class="auth-sub">Monitore seus treinos, compete com o grupo e evolua todo dia.</p>
+    <button class="btn" onclick="show('loginScreen')">Entrar</button>
+    <button class="btn outline" onclick="show('registerScreen')">Criar conta</button>
+  </div>
+</div>
+
+<!-- ══ LOGIN ══ -->
+<div id="loginScreen" class="screen">
+  <div class="auth-wrap">
+    <div class="auth-icon">👋</div>
+    <h1 class="auth-title">Bem-vindo de volta!</h1>
+    <p class="auth-sub">Entre com seu nome e senha.</p>
+    <div class="auth-form">
+      <div class="err-msg" id="loginErr">Nome ou senha incorretos.</div>
+      <label class="field-label">Nome</label>
+      <input type="text" id="loginName" class="field" placeholder="Seu nome..." autocomplete="username">
+      <label class="field-label">Senha</label>
+      <input type="password" id="loginPass" class="field" placeholder="Sua senha..." autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
+      <button class="btn" id="loginBtn" onclick="doLogin()">Entrar</button>
+      <button class="btn outline" onclick="show('welcomeScreen')">Voltar</button>
+    </div>
+    <p class="auth-switch" style="margin-top:14px">Não tem conta? <a onclick="show('registerScreen')">Criar agora</a></p>
+    <p class="auth-switch" style="margin-top:8px"><a onclick="show('adminLoginScreen')">Acesso admin</a></p>
+  </div>
+</div>
+
+<!-- ══ REGISTER ══ -->
+<div id="registerScreen" class="screen">
+  <div class="auth-wrap">
+    <div class="auth-icon">✨</div>
+    <h1 class="auth-title">Criar conta</h1>
+    <p class="auth-sub">Preencha seus dados para participar do desafio.</p>
+    <div class="auth-form">
+      <div class="err-msg" id="registerErr">Verifique os campos e tente novamente.</div>
+      <label class="field-label">Seu nome completo</label>
+      <input type="text" id="regName" class="field" placeholder="Ex: Ana Silva" autocomplete="name">
+      <label class="field-label">Senha</label>
+      <input type="password" id="regPass" class="field" placeholder="Mínimo 4 caracteres..." autocomplete="new-password">
+      <label class="field-label">Confirmar senha</label>
+      <input type="password" id="regPass2" class="field" placeholder="Repita a senha..." autocomplete="new-password" onkeydown="if(event.key==='Enter')doRegister()">
+      <button class="btn" id="registerBtn" onclick="doRegister()">Criar conta 💪</button>
+      <button class="btn outline" onclick="show('welcomeScreen')">Voltar</button>
+    </div>
+    <p class="auth-switch" style="margin-top:14px">Já tem conta? <a onclick="show('loginScreen')">Entrar</a></p>
+  </div>
+</div>
+
+<!-- ══ ADMIN LOGIN ══ -->
+<div id="adminLoginScreen" class="screen">
+  <div class="auth-wrap">
+    <div class="auth-icon">🔐</div>
+    <h1 class="auth-title">Área Admin</h1>
+    <p class="auth-sub">Acesso restrito ao organizador do desafio.</p>
+    <div class="auth-form">
+      <div class="err-msg" id="adminErr">Senha incorreta.</div>
+      <label class="field-label">Senha Admin</label>
+      <input type="password" id="adminPassInput" class="field" placeholder="Senha..." onkeydown="if(event.key==='Enter')checkAdmin()">
+      <button class="btn" onclick="checkAdmin()">Entrar</button>
+      <button class="btn outline" onclick="show('loginScreen')">Voltar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MAIN APP ══ -->
+<div id="mainScreen" class="screen">
+  <div class="header">
+    <div class="header-top">
+      <span class="header-badge">🌿 Desafio Saúde</span>
+      <div class="header-pills">
+        <span class="act-pill" id="pillCardio">🏃</span>
+        <span class="act-pill" id="pillGym">🏋️</span>
+        <span class="act-pill" id="pillFood">🥗</span>
+      </div>
+    </div>
+    <h1 class="header-title">Bora treinar!</h1>
+    <p class="header-sub" id="dateLabel">—</p>
+    <p class="header-user">Olá, <span id="userName">—</span><button onclick="doLogout()">sair</button></p>
+  </div>
+
+  <div class="tabs">
+    <button class="tab-btn active" id="tabBtnToday"   onclick="switchTab('today')">📋 Hoje</button>
+    <button class="tab-btn"        id="tabBtnRanking" onclick="switchTab('ranking')">🏆 Ranking</button>
+    <button class="tab-btn"        id="tabBtnProfile" onclick="switchTab('profile')">👤 Meu progresso</button>
+  </div>
+
+  <!-- TODAY -->
+  <div id="tabToday" class="content">
+    <div class="today-bar">
+      <div class="today-pts" id="todayPts">—</div>
+      <div class="today-info">
+        <div class="today-label">Meus pontos hoje</div>
+        <div class="today-acts" id="todayActs">Carregando...</div>
+        <div class="today-bonus" id="todayBonus">🎯 Bônus de semana completa ativo!</div>
+      </div>
+    </div>
+
+    <p class="section-title">Marque o que fez hoje</p>
+    <div class="act-grid">
+      <div class="act-card" id="actCardio" onclick="toggleActivity('cardio')">
+        <span class="act-emoji">🏃‍♀️</span>
+        <span class="act-name">Cardio</span>
+        <span class="act-pts">mín. 1km · +1 pt</span>
+      </div>
+      <div class="act-card" id="actGym" onclick="toggleActivity('gym')">
+        <span class="act-emoji">🏋️‍♀️</span>
+        <span class="act-name">Atividade Física</span>
+        <span class="act-pts">academia/treino · +1 pt</span>
+      </div>
+    </div>
+
+    <div class="food-card">
+      <div class="food-label">🥗 Desafio alimentar da semana</div>
+      <div class="food-text" id="foodChallenge">—</div>
+      <button class="food-btn" id="foodBtn" onclick="toggleActivity('food')">Marcar como feito · +1 pt</button>
+    </div>
+
+    <div class="bonus-card">
+      <div class="bonus-label">⭐ Bônus de semana completa</div>
+      <p style="font-size:13px;color:#1a4d88;margin-bottom:10px;line-height:1.5">Complete 5 dias com pelo menos 1 atividade e ganhe +3 pts extras!</p>
+      <div class="bonus-days" id="bonusDays"></div>
+    </div>
+  </div>
+
+  <!-- RANKING -->
+  <div id="tabRanking" class="content" style="display:none">
+    <button class="sync-btn" onclick="loadRanking()">🔄 Atualizar</button>
+    <div id="rankingList"><div class="loading"><div class="spinner"></div>Carregando...</div></div>
+  </div>
+
+  <!-- PROFILE -->
+  <div id="tabProfile" class="content" style="display:none">
+    <div id="profileContent"><div class="loading"><div class="spinner"></div>Carregando seu perfil...</div></div>
+  </div>
+
+  <nav class="bottom-nav">
+    <button class="nav-btn active" id="navToday"   onclick="switchTab('today')"><span class="nav-ico">📋</span><span class="nav-lbl">Hoje</span></button>
+    <button class="nav-btn"        id="navRanking" onclick="switchTab('ranking')"><span class="nav-ico">🏆</span><span class="nav-lbl">Ranking</span></button>
+    <button class="nav-btn"        id="navProfile" onclick="switchTab('profile')"><span class="nav-ico">👤</span><span class="nav-lbl">Perfil</span></button>
+  </nav>
+</div>
+
+<!-- ══ ADMIN ══ -->
+<div id="adminScreen" class="screen">
+  <div class="admin-header">
+    <span class="admin-title">📊 Dashboard Admin</span>
+    <button class="admin-out" onclick="show('loginScreen')">Sair</button>
+  </div>
+  <div class="admin-content">
+    <div class="stat-grid">
+      <div class="stat-card"><div class="stat-val" id="statPart">—</div><div class="stat-lbl">Participantes</div></div>
+      <div class="stat-card"><div class="stat-val" id="statActs">—</div><div class="stat-lbl">Atividades total</div></div>
+      <div class="stat-card"><div class="stat-val" id="statToday">—</div><div class="stat-lbl">Ativos hoje</div></div>
+      <div class="stat-card"><div class="stat-val" id="statWeek">—</div><div class="stat-lbl">Ativos esta semana</div></div>
+    </div>
+    <div class="filter-group">
+      <button class="filter-btn active" onclick="showAdminTab('geral',this)">🏆 Geral</button>
+      <button class="filter-btn" onclick="showAdminTab('cardio',this)">🏃 Cardio</button>
+      <button class="filter-btn" onclick="showAdminTab('gym',this)">🏋️ Academia</button>
+      <button class="filter-btn" onclick="showAdminTab('food',this)">🥗 Alimentação</button>
+      <button class="filter-btn" onclick="showAdminTab('presenca',this)">📅 Presença</button>
+    </div>
+    <div id="adminContent"><div class="loading"><div class="spinner"></div>Carregando...</div></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ════════════════════════════════════
+//  ⚙️  CONFIGURAÇÃO — edite aqui
+// ════════════════════════════════════
+const SCRIPT_URL     = 'https://script.google.com/macros/s/AKfycbwZx7sB6rAEgX9Bp-FoBaEHH-9oin-gdsFegCUr_p7JF2JEzX0dapZs-sUAwsaSwlZ59w/exec';
+const ADMIN_PASS     = 'saude2026';
+const FOOD_CHALLENGE = 'Reduzir os excessos — evite ultraprocessados, açúcar e álcool esta semana 🌱';
+// ════════════════════════════════════
+
+const TODAY = new Date().toISOString().split('T')[0];
+
+// Sessão — apenas nome e token ficam em localStorage, ZERO dados de saúde
+let session   = JSON.parse(localStorage.getItem('ds_session') || 'null');
+let todayState = {};
+let adminData  = null;
+let activeAdminTab = 'geral';
+
+// ── INIT ──────────────────────────────────────────────
+function init() {
+  if (session && session.name && session.token) {
+    showMain();
+  } else {
+    show('welcomeScreen');
+  }
+}
+
+function show(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+// ── REGISTER ──────────────────────────────────────────
+async function doRegister() {
+  const name  = document.getElementById('regName').value.trim();
+  const pass  = document.getElementById('regPass').value;
+  const pass2 = document.getElementById('regPass2').value;
+  const err   = document.getElementById('registerErr');
+  const btn   = document.getElementById('registerBtn');
+
+  err.classList.remove('show');
+  if (!name || pass.length < 4) { err.textContent='Nome e senha (mín. 4 caracteres) obrigatórios.'; err.classList.add('show'); return; }
+  if (pass !== pass2)           { err.textContent='As senhas não conferem.'; err.classList.add('show'); return; }
+
+  btn.disabled = true; btn.textContent = 'Criando conta...';
+  try {
+    const hash = await sha256(pass);
+    const r = await apiPost({ action:'register', name, passHash:hash });
+    if (r.success) {
+      session = { name, token: await sha256(name + hash) };
+      localStorage.setItem('ds_session', JSON.stringify(session));
+      toast('🎉 Conta criada! Bem-vindo(a) ao desafio!');
+      showMain();
+    } else {
+      err.textContent = r.error || 'Erro ao criar conta.';
+      err.classList.add('show');
+    }
+  } catch(e) { err.textContent='Sem conexão com o servidor.'; err.classList.add('show'); }
+  btn.disabled = false; btn.textContent = 'Criar conta 💪';
+}
+
+// ── LOGIN ─────────────────────────────────────────────
+async function doLogin() {
+  const name = document.getElementById('loginName').value.trim();
+  const pass = document.getElementById('loginPass').value;
+  const err  = document.getElementById('loginErr');
+  const btn  = document.getElementById('loginBtn');
+
+  err.classList.remove('show');
+  if (!name || !pass) { err.textContent='Preencha todos os campos.'; err.classList.add('show'); return; }
+
+  btn.disabled = true; btn.textContent = 'Entrando...';
+  try {
+    const hash = await sha256(pass);
+    const r = await apiPost({ action:'login', name, passHash:hash });
+    if (r.success) {
+      session = { name, token: await sha256(name + hash) };
+      localStorage.setItem('ds_session', JSON.stringify(session));
+      showMain();
+    } else {
+      err.textContent = 'Nome ou senha incorretos.';
+      err.classList.add('show');
+    }
+  } catch(e) { err.textContent='Sem conexão com o servidor.'; err.classList.add('show'); }
+  btn.disabled = false; btn.textContent = 'Entrar';
+}
+
+// ── LOGOUT ────────────────────────────────────────────
+function doLogout() {
+  session = null;
+  todayState = {};
+  localStorage.removeItem('ds_session');
+  show('welcomeScreen');
+}
+
+// ── ADMIN ─────────────────────────────────────────────
+function checkAdmin() {
+  const err = document.getElementById('adminErr');
+  err.classList.remove('show');
+  if (document.getElementById('adminPassInput').value === ADMIN_PASS) {
+    document.getElementById('adminPassInput').value = '';
+    show('adminScreen');
+    loadAdminData();
+  } else {
+    err.classList.add('show');
+  }
+}
+
+// ── MAIN ──────────────────────────────────────────────
+function showMain() {
+  show('mainScreen');
+  document.getElementById('userName').textContent   = session.name;
+  document.getElementById('foodChallenge').textContent = FOOD_CHALLENGE;
+  const now    = new Date();
+  const days   = ['domingo','segunda-feira','terça-feira','quarta-feira','quinta-feira','sexta-feira','sábado'];
+  const months = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+  document.getElementById('dateLabel').textContent  = `${days[now.getDay()]}, ${now.getDate()} de ${months[now.getMonth()]}`;
+  loadTodayState();
+  renderBonusDays();
+}
+
+// ── LOAD TODAY FROM SHEETS ────────────────────────────
+async function loadTodayState() {
+  setCardsLoading(true);
+  try {
+    const r = await apiFetch(`?action=today&name=${enc(session.name)}&date=${TODAY}&token=${enc(session.token)}`);
+    if (r.auth === false) { doLogout(); return; }
+    todayState = r.activities || {};
+  } catch(e) {
+    toast('⚠️ Erro ao carregar dados', true);
+    todayState = {};
+  }
+  setCardsLoading(false);
+  renderToday();
+}
+
+function setCardsLoading(on) {
+  ['actCardio','actGym'].forEach(id => document.getElementById(id).classList.toggle('loading-state', on));
+  document.getElementById('foodBtn').disabled = on;
+}
+
+// ── RENDER TODAY ──────────────────────────────────────
+function renderToday() {
+  const s = todayState;
+  const pts = (s.cardio?1:0) + (s.gym?1:0) + (s.food?1:0);
+
+  document.getElementById('actCardio').classList.toggle('done', !!s.cardio);
+  document.getElementById('actGym').classList.toggle('done',    !!s.gym);
+  document.getElementById('pillCardio').classList.toggle('done', !!s.cardio);
+  document.getElementById('pillGym').classList.toggle('done',   !!s.gym);
+  document.getElementById('pillFood').classList.toggle('done',  !!s.food);
+
+  const fb = document.getElementById('foodBtn');
+  fb.textContent = s.food ? '✓ Feito hoje!' : 'Marcar como feito · +1 pt';
+  fb.classList.toggle('done', !!s.food);
+
+  document.getElementById('todayPts').textContent = pts;
+  const done = [s.cardio&&'cardio', s.gym&&'academia', s.food&&'alimentação'].filter(Boolean);
+  document.getElementById('todayActs').textContent = done.length ? '✓ ' + done.join(' · ') : 'Nenhuma atividade ainda';
+}
+
+// ── BONUS DAYS ────────────────────────────────────────
+async function renderBonusDays() {
+  const el     = document.getElementById('bonusDays');
+  const labels = ['S','T','Q','Q','S'];
+  const now    = new Date();
+  const dow    = now.getDay() === 0 ? 7 : now.getDay();
+  const weekDates = Array.from({length:5}, (_,i) => {
+    const d = new Date(now);
+    d.setDate(now.getDate() - (dow - (i+1)));
+    return d.toISOString().split('T')[0];
+  });
+
+  let presence = {};
+  try {
+    const r = await apiFetch(`?action=weekpresence&name=${enc(session.name)}&dates=${weekDates.join(',')}&token=${enc(session.token)}`);
+    presence = r.presence || {};
+  } catch(e) {}
+
+  el.innerHTML = weekDates.map((date, i) => {
+    const cls = date === TODAY ? 'today-dot' : (presence[date] ? 'done' : '');
+    return `<div class="day-dot ${cls}">${labels[i]}</div>`;
+  }).join('');
+
+  const completedPrev = weekDates.filter(d => d !== TODAY && presence[d]).length;
+  const todayDone     = Object.values(todayState).some(Boolean);
+  document.getElementById('todayBonus').style.display = (completedPrev + (todayDone ? 1 : 0)) >= 5 ? 'block' : 'none';
+}
+
+// ── TOGGLE ACTIVITY ───────────────────────────────────
+async function toggleActivity(type) {
+  const wasDone = !!todayState[type];
+  setCardsLoading(true);
+  try {
+    const r = await apiPost({ action:'activity', name:session.name, token:session.token, activity:type, date:TODAY, remove:wasDone });
+    if (r.auth === false) { doLogout(); return; }
+    if (r.success) {
+      wasDone ? delete todayState[type] : (todayState[type] = true);
+      if (!wasDone) {
+        const msgs = { cardio:'🏃 Cardio registrado!', gym:'🏋️ Atividade registrada!', food:'🥗 Alimentação registrada!' };
+        toast(msgs[type]);
+      }
+    } else { toast('⚠️ ' + (r.error || 'Erro, tente novamente'), true); }
+  } catch(e) { toast('⚠️ Sem conexão', true); }
+  setCardsLoading(false);
+  renderToday();
+  renderBonusDays();
+}
+
+// ── RANKING ───────────────────────────────────────────
+async function loadRanking() {
+  document.getElementById('rankingList').innerHTML = '<div class="loading"><div class="spinner"></div>Carregando...</div>';
+  try {
+    const r = await apiFetch('?action=ranking');
+    renderRanking(r.ranking || []);
+  } catch(e) {
+    document.getElementById('rankingList').innerHTML = '<div class="empty"><span class="empty-ico">⚠️</span>Erro ao carregar.</div>';
+  }
+}
+
+function renderRanking(ranking) {
+  const el = document.getElementById('rankingList');
+  if (!ranking.length) { el.innerHTML = '<div class="empty"><span class="empty-ico">🌱</span>Nenhuma atividade ainda!</div>'; return; }
+  const medals = ['🥇','🥈','🥉'], mc = ['gold','silver','bronze'];
+  el.innerHTML = '<div class="rank-list">' + ranking.map((p, i) => {
+    const isMe = p.name === session.name;
+    const ini  = p.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+    const pos  = i < 3 ? medals[i] : (i+1), pc = i < 3 ? mc[i] : '';
+    return `<div class="rank-card${isMe?' me':''}">
+      <div class="rank-pos ${pc}">${pos}</div>
+      <div class="rank-av${isMe?' me-av':''}">${ini}</div>
+      <div class="rank-info"><div class="rank-name">${p.name}${isMe?' (você)':''}</div><div class="rank-detail">${p.activities} atividades</div></div>
+      <div><div class="rank-pts">${p.points}</div><div class="rank-pts-lbl">pts</div></div>
+    </div>`;
+  }).join('') + '</div>';
+}
+
+// ── PROFILE ───────────────────────────────────────────
+async function loadProfile() {
+  document.getElementById('profileContent').innerHTML = '<div class="loading"><div class="spinner"></div>Carregando...</div>';
+  try {
+    const r = await apiFetch(`?action=profile&name=${enc(session.name)}&token=${enc(session.token)}`);
+    if (r.auth === false) { doLogout(); return; }
+    renderProfile(r);
+  } catch(e) {
+    document.getElementById('profileContent').innerHTML = '<div class="empty"><span class="empty-ico">⚠️</span>Erro ao carregar.</div>';
+  }
+}
+
+function renderProfile(d) {
+  const ini  = session.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+  const hist = (d.history || []).slice(0,14);
+  const actLabels = { cardio:'🏃 Cardio', gym:'🏋️ Academia', food:'🥗 Alimentação' };
+
+  const histRows = hist.length ? hist.map(row => {
+    const chips = (row.activities||[]).map(a => `<span class="hist-chip ${a}">${actLabels[a]||a}</span>`).join('');
+    return `<div class="hist-row">
+      <div class="hist-date">${fmtDate(row.date)}</div>
+      <div class="hist-acts">${chips||'—'}</div>
+      <div class="hist-pts">+${row.points}</div>
+    </div>`;
+  }).join('') : '<p style="font-size:13px;color:var(--gray400);text-align:center;padding:20px 0">Nenhuma atividade ainda.</p>';
+
+  document.getElementById('profileContent').innerHTML = `
+    <div class="profile-hero">
+      <div class="profile-av">${ini}</div>
+      <div class="profile-name">${session.name}</div>
+      <div class="profile-since">No desafio desde ${fmtDate(d.since||TODAY)}</div>
+      <div class="profile-stats">
+        <div class="profile-stat"><div class="profile-stat-val">${d.totalPoints||0}</div><div class="profile-stat-lbl">Pontos</div></div>
+        <div class="profile-stat"><div class="profile-stat-val">${d.totalDays||0}</div><div class="profile-stat-lbl">Dias ativos</div></div>
+        <div class="profile-stat"><div class="profile-stat-val">#${d.rank||'—'}</div><div class="profile-stat-lbl">Posição</div></div>
+      </div>
+    </div>
+    <p class="section-title">Histórico recente</p>
+    ${histRows}
+    <div style="margin-top:24px">
+      <button class="btn outline btn-danger" onclick="confirmDelete()">Excluir minha conta</button>
+    </div>`;
+}
+
+function fmtDate(dateStr) {
+  if (!dateStr) return '—';
+  const [y,m,d] = dateStr.split('-');
+  const months = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+  return `${parseInt(d)} ${months[parseInt(m)-1]}`;
+}
+
+async function confirmDelete() {
+  if (!confirm('Tem certeza? Todos os seus dados serão removidos permanentemente.')) return;
+  try {
+    const r = await apiPost({ action:'deleteUser', name:session.name, token:session.token });
+    if (r.success) { doLogout(); toast('Conta excluída.'); }
+    else toast('Erro ao excluir.', true);
+  } catch(e) { toast('Erro ao excluir.', true); }
+}
+
+// ── ADMIN ─────────────────────────────────────────────
+async function loadAdminData() {
+  document.getElementById('adminContent').innerHTML = '<div class="loading"><div class="spinner"></div>Carregando...</div>';
+  try {
+    adminData = await apiFetch('?action=admin');
+    document.getElementById('statPart').textContent  = adminData.totalParticipants || 0;
+    document.getElementById('statActs').textContent  = adminData.totalActivities   || 0;
+    document.getElementById('statToday').textContent = adminData.activeToday       || 0;
+    document.getElementById('statWeek').textContent  = adminData.activeThisWeek    || 0;
+    renderAdminTab(activeAdminTab);
+  } catch(e) {
+    document.getElementById('adminContent').innerHTML = '<div class="empty"><span class="empty-ico">⚠️</span>Erro ao carregar.</div>';
+  }
+}
+
+function showAdminTab(tab, btn) {
+  activeAdminTab = tab;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderAdminTab(tab);
+}
+
+function renderAdminTab(tab) {
+  if (!adminData) return;
+  const el = document.getElementById('adminContent');
+  const medals = ['🥇','🥈','🥉'], mc = ['gold','silver','bronze'];
+
+  if (tab === 'presenca') {
+    const labels = ['S','T','Q','Q','S'];
+    const rows = (adminData.weekPresence || []).map(p => {
+      const dots = (p.days||[false,false,false,false,false]).map((ok,i)=>`<div class="pd ${ok?'ok':''}">${labels[i]}</div>`).join('');
+      return `<div class="presence-row">
+        <div class="presence-name">${p.name}</div>
+        <div class="presence-days">${dots}</div>
+        <div style="font-size:13px;font-weight:700;color:var(--g600);margin-left:6px">${(p.days||[]).filter(Boolean).length}/5</div>
+      </div>`;
+    }).join('');
+    el.innerHTML = `<p class="section-title">Presença esta semana</p>${rows||'<div class="empty">Nenhum dado</div>'}`;
+    return;
+  }
+
+  const keyMap  = { geral:'ranking', cardio:'cardioRanking', gym:'gymRanking', food:'foodRanking' };
+  const lblMap  = { geral:'🏆 Top 10 Geral', cardio:'🏃 Top Cardio', gym:'🏋️ Top Academia', food:'🥗 Top Alimentação' };
+  const data    = (adminData[keyMap[tab]] || []).slice(0, 10);
+  const rows    = data.map((p, i) => {
+    const ini = p.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+    const pos = i < 3 ? medals[i] : (i+1), pc = i < 3 ? mc[i] : '';
+    return `<div class="rank-card">
+      <div class="rank-pos ${pc}">${pos}</div>
+      <div class="rank-av">${ini}</div>
+      <div class="rank-info"><div class="rank-name">${p.name}</div><div class="rank-detail">${p.activities} atividades</div></div>
+      <div><div class="rank-pts">${p.points}</div><div class="rank-pts-lbl">pts</div></div>
+    </div>`;
+  }).join('');
+  el.innerHTML = `<p class="section-title">${lblMap[tab]}</p><div class="rank-list">${rows||'<div class="empty">Nenhum dado ainda</div>'}</div>`;
+}
+
+// ── TABS ──────────────────────────────────────────────
+function switchTab(tab) {
+  ['Today','Ranking','Profile'].forEach(t => {
+    const key = t.toLowerCase();
+    document.getElementById('tab'+t).style.display = key===tab ? 'block' : 'none';
+    document.getElementById('tabBtn'+t).classList.toggle('active', key===tab);
+    document.getElementById('nav'+t).classList.toggle('active', key===tab);
+  });
+  if (tab === 'ranking') loadRanking();
+  if (tab === 'profile') loadProfile();
+}
+
+// ── API ───────────────────────────────────────────────
+async function apiFetch(params) {
+  const r = await fetch(SCRIPT_URL + params, { cache:'no-store' });
+  return r.json();
+}
+async function apiPost(body) {
+  const r = await fetch(SCRIPT_URL, { method:'POST', headers:{'Content-Type':'text/plain'}, body:JSON.stringify(body) });
+  return r.json();
+}
+
+// ── SHA-256 (Web Crypto API — nativo no browser) ──────
+async function sha256(str) {
+  const buf  = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
+}
+
+function enc(s) { return encodeURIComponent(s); }
+
+function toast(msg, isErr) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className   = 'toast' + (isErr ? ' error' : '');
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+init();
+</script>
+</body>
+</html>
