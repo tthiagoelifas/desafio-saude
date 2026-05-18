@@ -16,6 +16,7 @@ function doGet(e) {
   const action = p.action || '';
 
   if (action === 'ranking')         return getRanking();
+  if (action === 'init')            return getInitData(p);
   if (action === 'adminGetProfile') return adminGetUserProfile(p);
   if (action === 'today')           return getToday(p.name, p.date, p.token);
   if (action === 'weekpresence') return getWeekPresence(p.name, p.dates, p.token);
@@ -130,13 +131,50 @@ function validateAdminToken(adminToken) {
 // ══════════════════════════════════════════════════════
 
 function getConfig() {
+  const cache  = CacheService.getScriptCache();
+  const cached = cache.get('config');
+  if (cached) return json(JSON.parse(cached));
+
   const sheet  = getConfigSheet();
   const rows   = sheet.getDataRange().getValues();
   const config = {};
   for (let i = 1; i < rows.length; i++) {
     if (rows[i][0]) config[rows[i][0].toString()] = rows[i][1].toString();
   }
+  cache.put('config', JSON.stringify(config), 3600);
   return json(config);
+}
+
+function getInitData(p) {
+  if (!validateToken(p.name, p.token)) return json({ auth: false });
+
+  const cache      = CacheService.getScriptCache();
+  const cachedConf = cache.get('config');
+  let   configData = {};
+  if (cachedConf) {
+    configData = JSON.parse(cachedConf);
+  } else {
+    const rows = getConfigSheet().getDataRange().getValues();
+    for (let i = 1; i < rows.length; i++) {
+      if (rows[i][0]) configData[rows[i][0].toString()] = rows[i][1].toString();
+    }
+    cache.put('config', JSON.stringify(configData), 3600);
+  }
+
+  const actRows  = getActSheet().getDataRange().getValues();
+  const lname    = p.name.toLowerCase();
+  const dates    = (p.dates || '').split(',').filter(Boolean);
+  const activities = {};
+  const presence   = {};
+
+  for (let i = 1; i < actRows.length; i++) {
+    if (actRows[i][1].toString().toLowerCase() !== lname) continue;
+    const nd = normalizeDate(actRows[i][3]);
+    if (nd === p.date)       activities[actRows[i][2]] = true;
+    if (dates.includes(nd))  presence[nd] = true;
+  }
+
+  return json({ desafio_alimentar: configData.desafio_alimentar || '', activities, presence });
 }
 
 // ══════════════════════════════════════════════════════
@@ -165,13 +203,15 @@ function saveActivity(d) {
   const lname  = d.name.toLowerCase();
 
   if (remove) {
+    let removed = false;
     for (let i = rows.length - 1; i >= 1; i--) {
       if (rows[i][1].toString().toLowerCase() === lname && rows[i][2] === d.activity && normalizeDate(rows[i][3]) === d.date) {
         sheet.deleteRow(i + 1);
-        return json({ success: true, action: 'removed' });
+        removed = true;
       }
     }
-    return json({ success: true, action: 'not_found' });
+    if (removed) CacheService.getScriptCache().remove('ranking');
+    return json({ success: true, action: removed ? 'removed' : 'not_found' });
   }
 
   for (let i = 1; i < rows.length; i++) {
@@ -181,6 +221,7 @@ function saveActivity(d) {
   }
 
   sheet.appendRow([new Date().toISOString(), d.name, d.activity, d.date]);
+  CacheService.getScriptCache().remove('ranking');
   return json({ success: true, action: 'saved' });
 }
 
@@ -263,14 +304,20 @@ function deleteUser(d) {
 // ══════════════════════════════════════════════════════
 
 function getRanking() {
+  const cache  = CacheService.getScriptCache();
+  const cached = cache.get('ranking');
+  if (cached) return json(JSON.parse(cached));
+
   const rows   = getActSheet().getDataRange().getValues();
   const scores = buildScores(rows);
-  return json({
+  const data   = {
     ranking:       toRankingArray(scores, 'total'),
     cardioRanking: toRankingArray(scores, 'cardio'),
     gymRanking:    toRankingArray(scores, 'gym'),
     foodRanking:   toRankingArray(scores, 'food')
-  });
+  };
+  cache.put('ranking', JSON.stringify(data), 300);
+  return json(data);
 }
 
 // ══════════════════════════════════════════════════════
@@ -344,10 +391,14 @@ function normalizeDate(val) {
 }
 
 function buildScores(rows) {
-  const map = {};
+  const map  = {};
+  const seen = new Set();
   rows.slice(1).forEach(r => {
     const name = r[1], act = r[2], date = normalizeDate(r[3]);
     if (!name || !act || !date) return;
+    const dedupeKey = `${name.toString().toLowerCase()}|${act}|${date}`;
+    if (seen.has(dedupeKey)) return;
+    seen.add(dedupeKey);
     if (!map[name]) map[name] = { total: 0, cardio: 0, gym: 0, food: 0, actCount: 0, weekDays: {} };
     map[name][act]      = (map[name][act] || 0) + 1;
     map[name].total    += 1;
@@ -451,10 +502,12 @@ function adminSetConfig(d) {
   for (let i = 1; i < rows.length; i++) {
     if (rows[i][0].toString() === d.key) {
       sheet.getRange(i + 1, 2).setValue(d.value);
+      CacheService.getScriptCache().remove('config');
       return json({ success: true });
     }
   }
   sheet.appendRow([d.key, d.value]);
+  CacheService.getScriptCache().remove('config');
   return json({ success: true });
 }
 
