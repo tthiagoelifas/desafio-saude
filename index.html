@@ -226,7 +226,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--g50);color:var(--gray900)
       <div class="err-msg" id="adminErr">Senha incorreta.</div>
       <label class="field-label">Senha Admin</label>
       <input type="password" id="adminPassInput" class="field" placeholder="Senha..." onkeydown="if(event.key==='Enter')checkAdmin()">
-      <button class="btn" onclick="checkAdmin()">Entrar</button>
+      <button class="btn" id="adminLoginBtn" onclick="checkAdmin()">Entrar</button>
       <button class="btn outline" onclick="show('loginScreen')">Voltar</button>
     </div>
   </div>
@@ -275,13 +275,13 @@ body{font-family:'DM Sans',sans-serif;background:var(--g50);color:var(--gray900)
       <div class="act-card" id="actGym" onclick="toggleActivity('gym')">
         <span class="act-emoji">🏋️‍♀️</span>
         <span class="act-name">Atividade Física</span>
-        <span class="act-pts">academia/treino · +1 pt</span>
+        <span class="act-pts">funcional ou academia · +1 pt</span>
       </div>
     </div>
 
     <div class="food-card">
       <div class="food-label">🥗 Desafio alimentar da semana</div>
-      <div class="food-text" id="foodChallenge">—</div>
+      <div class="food-text" id="foodChallenge">Carregando...</div>
       <button class="food-btn" id="foodBtn" onclick="toggleActivity('food')">Marcar como feito · +1 pt</button>
     </div>
 
@@ -294,6 +294,12 @@ body{font-family:'DM Sans',sans-serif;background:var(--g50);color:var(--gray900)
 
   <!-- RANKING -->
   <div id="tabRanking" class="content" style="display:none">
+    <div class="filter-group" id="rankingFilters">
+      <button class="filter-btn active" onclick="setRankingFilter('geral',this)">🏆 Geral</button>
+      <button class="filter-btn" onclick="setRankingFilter('cardio',this)">🏃 Cardio</button>
+      <button class="filter-btn" onclick="setRankingFilter('gym',this)">🏋️ Func./Academia</button>
+      <button class="filter-btn" onclick="setRankingFilter('food',this)">🥗 Alimentação</button>
+    </div>
     <button class="sync-btn" onclick="loadRanking()">🔄 Atualizar</button>
     <div id="rankingList"><div class="loading"><div class="spinner"></div>Carregando...</div></div>
   </div>
@@ -326,9 +332,11 @@ body{font-family:'DM Sans',sans-serif;background:var(--g50);color:var(--gray900)
     <div class="filter-group">
       <button class="filter-btn active" onclick="showAdminTab('geral',this)">🏆 Geral</button>
       <button class="filter-btn" onclick="showAdminTab('cardio',this)">🏃 Cardio</button>
-      <button class="filter-btn" onclick="showAdminTab('gym',this)">🏋️ Academia</button>
+      <button class="filter-btn" onclick="showAdminTab('gym',this)">🏋️ Func./Academia</button>
       <button class="filter-btn" onclick="showAdminTab('food',this)">🥗 Alimentação</button>
       <button class="filter-btn" onclick="showAdminTab('presenca',this)">📅 Presença</button>
+      <button class="filter-btn" onclick="showAdminTab('desafio',this)">🍎 Desafio</button>
+      <button class="filter-btn" onclick="showAdminTab('usuarios',this)">👥 Usuários</button>
     </div>
     <div id="adminContent"><div class="loading"><div class="spinner"></div>Carregando...</div></div>
   </div>
@@ -340,18 +348,29 @@ body{font-family:'DM Sans',sans-serif;background:var(--g50);color:var(--gray900)
 // ════════════════════════════════════
 //  ⚙️  CONFIGURAÇÃO — edite aqui
 // ════════════════════════════════════
-const SCRIPT_URL     = 'https://script.google.com/macros/s/AKfycbwZx7sB6rAEgX9Bp-FoBaEHH-9oin-gdsFegCUr_p7JF2JEzX0dapZs-sUAwsaSwlZ59w/exec';
-const ADMIN_PASS     = 'saude2026';
-const FOOD_CHALLENGE = 'Reduzir os excessos — evite ultraprocessados, açúcar e álcool esta semana 🌱';
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwZx7sB6rAEgX9Bp-FoBaEHH-9oin-gdsFegCUr_p7JF2JEzX0dapZs-sUAwsaSwlZ59w/exec';
 // ════════════════════════════════════
 
 const TODAY = new Date().toISOString().split('T')[0];
 
-// Sessão — apenas nome e token ficam em localStorage, ZERO dados de saúde
-let session   = JSON.parse(localStorage.getItem('ds_session') || 'null');
-let todayState = {};
-let adminData  = null;
+let session        = JSON.parse(localStorage.getItem('ds_session') || 'null');
+let adminToken     = sessionStorage.getItem('ds_admin_token') || null;
+let todayState     = {};
+let adminData      = null;
 let activeAdminTab = 'geral';
+let rankingData    = null;
+let rankingFilter  = 'geral';
+let adminUsers     = [];
+
+// Escapa HTML para evitar XSS ao inserir dados do usuário em innerHTML
+function esc(s) {
+  return String(s || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
 
 // ── INIT ──────────────────────────────────────────────
 function init() {
@@ -376,15 +395,16 @@ async function doRegister() {
   const btn   = document.getElementById('registerBtn');
 
   err.classList.remove('show');
-  if (!name || pass.length < 4) { err.textContent='Nome e senha (mín. 4 caracteres) obrigatórios.'; err.classList.add('show'); return; }
-  if (pass !== pass2)           { err.textContent='As senhas não conferem.'; err.classList.add('show'); return; }
+  if (!name || pass.length < 4) { err.textContent = 'Nome e senha (mín. 4 caracteres) obrigatórios.'; err.classList.add('show'); return; }
+  if (pass !== pass2)           { err.textContent = 'As senhas não conferem.'; err.classList.add('show'); return; }
 
   btn.disabled = true; btn.textContent = 'Criando conta...';
   try {
-    const hash = await sha256(pass);
-    const r = await apiPost({ action:'register', name, passHash:hash });
+    const hash       = await sha256(pass);
+    const r          = await apiPost({ action: 'register', name, passHash: hash });
     if (r.success) {
-      session = { name, token: await sha256(name + hash) };
+      const storedName = r.storedName || name;
+      session = { name: storedName, token: await sha256(storedName + hash) };
       localStorage.setItem('ds_session', JSON.stringify(session));
       toast('🎉 Conta criada! Bem-vindo(a) ao desafio!');
       showMain();
@@ -392,7 +412,7 @@ async function doRegister() {
       err.textContent = r.error || 'Erro ao criar conta.';
       err.classList.add('show');
     }
-  } catch(e) { err.textContent='Sem conexão com o servidor.'; err.classList.add('show'); }
+  } catch(e) { err.textContent = 'Sem conexão com o servidor.'; err.classList.add('show'); }
   btn.disabled = false; btn.textContent = 'Criar conta 💪';
 }
 
@@ -404,56 +424,80 @@ async function doLogin() {
   const btn  = document.getElementById('loginBtn');
 
   err.classList.remove('show');
-  if (!name || !pass) { err.textContent='Preencha todos os campos.'; err.classList.add('show'); return; }
+  if (!name || !pass) { err.textContent = 'Preencha todos os campos.'; err.classList.add('show'); return; }
 
   btn.disabled = true; btn.textContent = 'Entrando...';
   try {
     const hash = await sha256(pass);
-    const r = await apiPost({ action:'login', name, passHash:hash });
+    const r    = await apiPost({ action: 'login', name, passHash: hash });
     if (r.success) {
-      session = { name, token: await sha256(name + hash) };
+      const storedName = r.storedName || name;
+      session = { name: storedName, token: await sha256(storedName + hash) };
       localStorage.setItem('ds_session', JSON.stringify(session));
       showMain();
     } else {
-      err.textContent = 'Nome ou senha incorretos.';
+      err.textContent = r.error || 'Nome ou senha incorretos.';
       err.classList.add('show');
     }
-  } catch(e) { err.textContent='Sem conexão com o servidor.'; err.classList.add('show'); }
+  } catch(e) { err.textContent = 'Sem conexão com o servidor.'; err.classList.add('show'); }
   btn.disabled = false; btn.textContent = 'Entrar';
 }
 
 // ── LOGOUT ────────────────────────────────────────────
 function doLogout() {
-  session = null;
+  session    = null;
   todayState = {};
   localStorage.removeItem('ds_session');
   show('welcomeScreen');
 }
 
-// ── ADMIN ─────────────────────────────────────────────
-function checkAdmin() {
+// ── ADMIN LOGIN (via API — senha nunca fica no HTML) ──
+async function checkAdmin() {
   const err = document.getElementById('adminErr');
+  const btn = document.getElementById('adminLoginBtn');
   err.classList.remove('show');
-  if (document.getElementById('adminPassInput').value === ADMIN_PASS) {
-    document.getElementById('adminPassInput').value = '';
-    show('adminScreen');
-    loadAdminData();
-  } else {
-    err.classList.add('show');
-  }
+  const pass = document.getElementById('adminPassInput').value;
+  if (!pass) { err.classList.add('show'); return; }
+
+  btn.disabled = true; btn.textContent = 'Verificando...';
+  try {
+    const hash = await sha256(pass);
+    const r    = await apiPost({ action: 'adminLogin', passHash: hash });
+    if (r.success) {
+      adminToken = r.adminToken;
+      sessionStorage.setItem('ds_admin_token', adminToken);
+      document.getElementById('adminPassInput').value = '';
+      show('adminScreen');
+      loadAdminData();
+    } else {
+      err.textContent = r.error || 'Senha incorreta.';
+      err.classList.add('show');
+    }
+  } catch(e) { err.textContent = 'Sem conexão.'; err.classList.add('show'); }
+  btn.disabled = false; btn.textContent = 'Entrar';
 }
 
 // ── MAIN ──────────────────────────────────────────────
 function showMain() {
   show('mainScreen');
-  document.getElementById('userName').textContent   = session.name;
-  document.getElementById('foodChallenge').textContent = FOOD_CHALLENGE;
+  document.getElementById('userName').textContent = session.name;
   const now    = new Date();
   const days   = ['domingo','segunda-feira','terça-feira','quarta-feira','quinta-feira','sexta-feira','sábado'];
   const months = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
-  document.getElementById('dateLabel').textContent  = `${days[now.getDay()]}, ${now.getDate()} de ${months[now.getMonth()]}`;
+  document.getElementById('dateLabel').textContent = `${days[now.getDay()]}, ${now.getDate()} de ${months[now.getMonth()]}`;
+  loadFoodChallenge();
   loadTodayState();
   renderBonusDays();
+}
+
+async function loadFoodChallenge() {
+  try {
+    const r = await apiFetch('?action=config');
+    document.getElementById('foodChallenge').textContent =
+      r.desafio_alimentar || 'Sem desafio alimentar esta semana.';
+  } catch(e) {
+    document.getElementById('foodChallenge').textContent = 'Erro ao carregar desafio.';
+  }
 }
 
 // ── LOAD TODAY FROM SHEETS ────────────────────────────
@@ -472,14 +516,14 @@ async function loadTodayState() {
 }
 
 function setCardsLoading(on) {
-  ['actCardio','actGym'].forEach(id => document.getElementById(id).classList.toggle('loading-state', on));
+  ['actCardio', 'actGym'].forEach(id => document.getElementById(id).classList.toggle('loading-state', on));
   document.getElementById('foodBtn').disabled = on;
 }
 
 // ── RENDER TODAY ──────────────────────────────────────
 function renderToday() {
-  const s = todayState;
-  const pts = (s.cardio?1:0) + (s.gym?1:0) + (s.food?1:0);
+  const s   = todayState;
+  const pts = (s.cardio ? 1 : 0) + (s.gym ? 1 : 0) + (s.food ? 1 : 0);
 
   document.getElementById('actCardio').classList.toggle('done', !!s.cardio);
   document.getElementById('actGym').classList.toggle('done',    !!s.gym);
@@ -492,25 +536,25 @@ function renderToday() {
   fb.classList.toggle('done', !!s.food);
 
   document.getElementById('todayPts').textContent = pts;
-  const done = [s.cardio&&'cardio', s.gym&&'academia', s.food&&'alimentação'].filter(Boolean);
+  const done = [s.cardio && 'cardio', s.gym && 'funcional', s.food && 'alimentação'].filter(Boolean);
   document.getElementById('todayActs').textContent = done.length ? '✓ ' + done.join(' · ') : 'Nenhuma atividade ainda';
 }
 
 // ── BONUS DAYS ────────────────────────────────────────
 async function renderBonusDays() {
   const el     = document.getElementById('bonusDays');
-  const labels = ['S','T','Q','Q','S'];
+  const labels = ['S', 'T', 'Q', 'Q', 'S', 'S', 'D'];
   const now    = new Date();
   const dow    = now.getDay() === 0 ? 7 : now.getDay();
-  const weekDates = Array.from({length:5}, (_,i) => {
+  const weekDates = Array.from({ length: 7 }, (_, i) => {
     const d = new Date(now);
-    d.setDate(now.getDate() - (dow - (i+1)));
+    d.setDate(now.getDate() - (dow - (i + 1)));
     return d.toISOString().split('T')[0];
   });
 
   let presence = {};
   try {
-    const r = await apiFetch(`?action=weekpresence&name=${enc(session.name)}&dates=${weekDates.join(',')}&token=${enc(session.token)}`);
+    const r  = await apiFetch(`?action=weekpresence&name=${enc(session.name)}&dates=${weekDates.join(',')}&token=${enc(session.token)}`);
     presence = r.presence || {};
   } catch(e) {}
 
@@ -529,12 +573,12 @@ async function toggleActivity(type) {
   const wasDone = !!todayState[type];
   setCardsLoading(true);
   try {
-    const r = await apiPost({ action:'activity', name:session.name, token:session.token, activity:type, date:TODAY, remove:wasDone });
+    const r = await apiPost({ action: 'activity', name: session.name, token: session.token, activity: type, date: TODAY, remove: wasDone });
     if (r.auth === false) { doLogout(); return; }
     if (r.success) {
       wasDone ? delete todayState[type] : (todayState[type] = true);
       if (!wasDone) {
-        const msgs = { cardio:'🏃 Cardio registrado!', gym:'🏋️ Atividade registrada!', food:'🥗 Alimentação registrada!' };
+        const msgs = { cardio: '🏃 Cardio registrado!', gym: '🏋️ Atividade registrada!', food: '🥗 Alimentação registrada!' };
         toast(msgs[type]);
       }
     } else { toast('⚠️ ' + (r.error || 'Erro, tente novamente'), true); }
@@ -548,25 +592,39 @@ async function toggleActivity(type) {
 async function loadRanking() {
   document.getElementById('rankingList').innerHTML = '<div class="loading"><div class="spinner"></div>Carregando...</div>';
   try {
-    const r = await apiFetch('?action=ranking');
-    renderRanking(r.ranking || []);
+    const r  = await apiFetch('?action=ranking');
+    rankingData = r;
+    renderRankingByFilter();
   } catch(e) {
     document.getElementById('rankingList').innerHTML = '<div class="empty"><span class="empty-ico">⚠️</span>Erro ao carregar.</div>';
   }
 }
 
+function setRankingFilter(type, btn) {
+  rankingFilter = type;
+  document.querySelectorAll('#rankingFilters .filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  if (rankingData) renderRankingByFilter();
+}
+
+function renderRankingByFilter() {
+  const keyMap = { geral: 'ranking', cardio: 'cardioRanking', gym: 'gymRanking', food: 'foodRanking' };
+  const data   = rankingData[keyMap[rankingFilter]] || [];
+  renderRanking(rankingFilter === 'geral' ? data : data.slice(0, 10));
+}
+
 function renderRanking(ranking) {
   const el = document.getElementById('rankingList');
   if (!ranking.length) { el.innerHTML = '<div class="empty"><span class="empty-ico">🌱</span>Nenhuma atividade ainda!</div>'; return; }
-  const medals = ['🥇','🥈','🥉'], mc = ['gold','silver','bronze'];
+  const medals = ['🥇', '🥈', '🥉'], mc = ['gold', 'silver', 'bronze'];
   el.innerHTML = '<div class="rank-list">' + ranking.map((p, i) => {
     const isMe = p.name === session.name;
-    const ini  = p.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
-    const pos  = i < 3 ? medals[i] : (i+1), pc = i < 3 ? mc[i] : '';
-    return `<div class="rank-card${isMe?' me':''}">
+    const ini  = esc(p.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase());
+    const pos  = i < 3 ? medals[i] : (i + 1), pc = i < 3 ? mc[i] : '';
+    return `<div class="rank-card${isMe ? ' me' : ''}">
       <div class="rank-pos ${pc}">${pos}</div>
-      <div class="rank-av${isMe?' me-av':''}">${ini}</div>
-      <div class="rank-info"><div class="rank-name">${p.name}${isMe?' (você)':''}</div><div class="rank-detail">${p.activities} atividades</div></div>
+      <div class="rank-av${isMe ? ' me-av' : ''}">${ini}</div>
+      <div class="rank-info"><div class="rank-name">${esc(p.name)}${isMe ? ' (você)' : ''}</div><div class="rank-detail">${p.activities} atividades</div></div>
       <div><div class="rank-pts">${p.points}</div><div class="rank-pts-lbl">pts</div></div>
     </div>`;
   }).join('') + '</div>';
@@ -585,48 +643,114 @@ async function loadProfile() {
 }
 
 function renderProfile(d) {
-  const ini  = session.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
-  const hist = (d.history || []).slice(0,14);
-  const actLabels = { cardio:'🏃 Cardio', gym:'🏋️ Academia', food:'🥗 Alimentação' };
+  const ini       = esc(session.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase());
+  const history   = d.history || [];
+  const SHOW_INIT = 14;
+  const actLabels = { cardio: '🏃 Cardio', gym: '🏋️ Func./Academia', food: '🥗 Alimentação' };
 
-  const histRows = hist.length ? hist.map(row => {
-    const chips = (row.activities||[]).map(a => `<span class="hist-chip ${a}">${actLabels[a]||a}</span>`).join('');
+  const makeHistRow = row => {
+    const chips = (row.activities || []).map(a => `<span class="hist-chip ${esc(a)}">${esc(actLabels[a] || a)}</span>`).join('');
     return `<div class="hist-row">
       <div class="hist-date">${fmtDate(row.date)}</div>
-      <div class="hist-acts">${chips||'—'}</div>
+      <div class="hist-acts">${chips || '—'}</div>
       <div class="hist-pts">+${row.points}</div>
     </div>`;
-  }).join('') : '<p style="font-size:13px;color:var(--gray400);text-align:center;padding:20px 0">Nenhuma atividade ainda.</p>';
+  };
+
+  const visibleRows = history.slice(0, SHOW_INIT).map(makeHistRow).join('');
+  const hiddenRows  = history.slice(SHOW_INIT).map(makeHistRow).join('');
+  const moreBtn     = hiddenRows
+    ? `<button class="sync-btn" style="margin-top:8px" onclick="
+        document.getElementById('histMore').style.display='block';
+        this.style.display='none'
+      ">Ver mais (${history.length - SHOW_INIT} dias)</button>
+       <div id="histMore" style="display:none">${hiddenRows}</div>`
+    : '';
+
+  const histHTML = history.length
+    ? `${visibleRows}${moreBtn}`
+    : '<p style="font-size:13px;color:var(--gray400);text-align:center;padding:20px 0">Nenhuma atividade ainda.</p>';
 
   document.getElementById('profileContent').innerHTML = `
     <div class="profile-hero">
       <div class="profile-av">${ini}</div>
-      <div class="profile-name">${session.name}</div>
-      <div class="profile-since">No desafio desde ${fmtDate(d.since||TODAY)}</div>
+      <div class="profile-name">${esc(session.name)}</div>
+      <div class="profile-since">No desafio desde ${fmtDate(d.since || TODAY)}</div>
       <div class="profile-stats">
-        <div class="profile-stat"><div class="profile-stat-val">${d.totalPoints||0}</div><div class="profile-stat-lbl">Pontos</div></div>
-        <div class="profile-stat"><div class="profile-stat-val">${d.totalDays||0}</div><div class="profile-stat-lbl">Dias ativos</div></div>
-        <div class="profile-stat"><div class="profile-stat-val">#${d.rank||'—'}</div><div class="profile-stat-lbl">Posição</div></div>
+        <div class="profile-stat"><div class="profile-stat-val">${d.totalPoints || 0}</div><div class="profile-stat-lbl">Pontos</div></div>
+        <div class="profile-stat"><div class="profile-stat-val">${d.totalDays || 0}</div><div class="profile-stat-lbl">Dias ativos</div></div>
+        <div class="profile-stat"><div class="profile-stat-val">#${d.rank || '—'}</div><div class="profile-stat-lbl">Posição</div></div>
       </div>
     </div>
-    <p class="section-title">Histórico recente</p>
-    ${histRows}
+    <p class="section-title">Histórico de atividades</p>
+    ${histHTML}
     <div style="margin-top:24px">
-      <button class="btn outline btn-danger" onclick="confirmDelete()">Excluir minha conta</button>
+      <button class="btn outline" id="changePassToggle" onclick="toggleChangePass()">Alterar senha</button>
+      <div id="changePassForm" style="display:none;margin-top:12px;background:white;border-radius:var(--rlg);padding:16px;border:1px solid var(--gray100)">
+        <div class="err-msg" id="changePassErr"></div>
+        <label class="field-label">Senha atual</label>
+        <input type="password" id="currPass" class="field" placeholder="Senha atual...">
+        <label class="field-label">Nova senha</label>
+        <input type="password" id="newPass" class="field" placeholder="Mínimo 4 caracteres...">
+        <label class="field-label">Confirmar nova senha</label>
+        <input type="password" id="newPass2" class="field" placeholder="Confirmar nova senha...">
+        <button class="btn" id="changePassBtn" onclick="doChangePassword()">Salvar nova senha</button>
+      </div>
+      <button class="btn danger" style="margin-top:10px" onclick="confirmDelete()">Excluir minha conta</button>
     </div>`;
+}
+
+function toggleChangePass() {
+  const form   = document.getElementById('changePassForm');
+  const toggle = document.getElementById('changePassToggle');
+  const open   = form.style.display === 'none';
+  form.style.display   = open ? 'block' : 'none';
+  toggle.textContent   = open ? 'Cancelar' : 'Alterar senha';
+}
+
+async function doChangePassword() {
+  const curr  = document.getElementById('currPass').value;
+  const newp  = document.getElementById('newPass').value;
+  const newp2 = document.getElementById('newPass2').value;
+  const err   = document.getElementById('changePassErr');
+  const btn   = document.getElementById('changePassBtn');
+
+  err.classList.remove('show');
+  if (!curr || newp.length < 4) { err.textContent = 'Preencha todos os campos (nova senha: mín. 4 caracteres).'; err.classList.add('show'); return; }
+  if (newp !== newp2)           { err.textContent = 'As senhas não conferem.'; err.classList.add('show'); return; }
+
+  btn.disabled = true; btn.textContent = 'Salvando...';
+  try {
+    const currHash = await sha256(curr);
+    const verify   = await apiPost({ action: 'login', name: session.name, passHash: currHash });
+    if (!verify.success) { err.textContent = 'Senha atual incorreta.'; err.classList.add('show'); btn.disabled = false; btn.textContent = 'Salvar nova senha'; return; }
+
+    const newHash = await sha256(newp);
+    const r       = await apiPost({ action: 'changePassword', name: session.name, token: session.token, newPassHash: newHash });
+    if (r.success) {
+      session.token = await sha256(session.name + newHash);
+      localStorage.setItem('ds_session', JSON.stringify(session));
+      toggleChangePass();
+      toast('Senha alterada com sucesso!');
+    } else {
+      err.textContent = r.error || 'Erro ao alterar senha.';
+      err.classList.add('show');
+    }
+  } catch(e) { err.textContent = 'Sem conexão.'; err.classList.add('show'); }
+  btn.disabled = false; btn.textContent = 'Salvar nova senha';
 }
 
 function fmtDate(dateStr) {
   if (!dateStr) return '—';
-  const [y,m,d] = dateStr.split('-');
-  const months = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
-  return `${parseInt(d)} ${months[parseInt(m)-1]}`;
+  const [y, m, d] = dateStr.split('-');
+  const months = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+  return `${parseInt(d)} ${months[parseInt(m) - 1]}`;
 }
 
 async function confirmDelete() {
   if (!confirm('Tem certeza? Todos os seus dados serão removidos permanentemente.')) return;
   try {
-    const r = await apiPost({ action:'deleteUser', name:session.name, token:session.token });
+    const r = await apiPost({ action: 'deleteUser', name: session.name, token: session.token });
     if (r.success) { doLogout(); toast('Conta excluída.'); }
     else toast('Erro ao excluir.', true);
   } catch(e) { toast('Erro ao excluir.', true); }
@@ -636,7 +760,13 @@ async function confirmDelete() {
 async function loadAdminData() {
   document.getElementById('adminContent').innerHTML = '<div class="loading"><div class="spinner"></div>Carregando...</div>';
   try {
-    adminData = await apiFetch('?action=admin');
+    adminData = await apiFetch(`?action=admin&adminToken=${enc(adminToken || '')}`);
+    if (adminData.auth === false) {
+      adminToken = null;
+      sessionStorage.removeItem('ds_admin_token');
+      show('adminLoginScreen');
+      return;
+    }
     document.getElementById('statPart').textContent  = adminData.totalParticipants || 0;
     document.getElementById('statActs').textContent  = adminData.totalActivities   || 0;
     document.getElementById('statToday').textContent = adminData.activeToday       || 0;
@@ -656,46 +786,49 @@ function showAdminTab(tab, btn) {
 
 function renderAdminTab(tab) {
   if (!adminData) return;
-  const el = document.getElementById('adminContent');
-  const medals = ['🥇','🥈','🥉'], mc = ['gold','silver','bronze'];
+  const el     = document.getElementById('adminContent');
+  const medals = ['🥇', '🥈', '🥉'], mc = ['gold', 'silver', 'bronze'];
+
+  if (tab === 'desafio')  { renderAdminDesafio(el); return; }
+  if (tab === 'usuarios') { renderAdminUsuarios(el); return; }
 
   if (tab === 'presenca') {
-    const labels = ['S','T','Q','Q','S'];
+    const labels = ['S', 'T', 'Q', 'Q', 'S', 'S', 'D'];
     const rows = (adminData.weekPresence || []).map(p => {
-      const dots = (p.days||[false,false,false,false,false]).map((ok,i)=>`<div class="pd ${ok?'ok':''}">${labels[i]}</div>`).join('');
+      const dots = (p.days || [false,false,false,false,false,false,false]).map((ok, i) => `<div class="pd ${ok ? 'ok' : ''}">${labels[i]}</div>`).join('');
       return `<div class="presence-row">
-        <div class="presence-name">${p.name}</div>
+        <div class="presence-name">${esc(p.name)}</div>
         <div class="presence-days">${dots}</div>
-        <div style="font-size:13px;font-weight:700;color:var(--g600);margin-left:6px">${(p.days||[]).filter(Boolean).length}/5</div>
+        <div style="font-size:13px;font-weight:700;color:var(--g600);margin-left:6px">${(p.days || []).filter(Boolean).length}/7</div>
       </div>`;
     }).join('');
-    el.innerHTML = `<p class="section-title">Presença esta semana</p>${rows||'<div class="empty">Nenhum dado</div>'}`;
+    el.innerHTML = `<p class="section-title">Presença esta semana</p>${rows || '<div class="empty">Nenhum dado</div>'}`;
     return;
   }
 
-  const keyMap  = { geral:'ranking', cardio:'cardioRanking', gym:'gymRanking', food:'foodRanking' };
-  const lblMap  = { geral:'🏆 Top 10 Geral', cardio:'🏃 Top Cardio', gym:'🏋️ Top Academia', food:'🥗 Top Alimentação' };
-  const data    = (adminData[keyMap[tab]] || []).slice(0, 10);
-  const rows    = data.map((p, i) => {
-    const ini = p.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
-    const pos = i < 3 ? medals[i] : (i+1), pc = i < 3 ? mc[i] : '';
+  const keyMap = { geral: 'ranking', cardio: 'cardioRanking', gym: 'gymRanking', food: 'foodRanking' };
+  const lblMap = { geral: '🏆 Top 10 Geral', cardio: '🏃 Top Cardio', gym: '🏋️ Top Funcional', food: '🥗 Top Alimentação' };
+  const data   = (adminData[keyMap[tab]] || []).slice(0, 10);
+  const rows   = data.map((p, i) => {
+    const ini = esc(p.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase());
+    const pos = i < 3 ? medals[i] : (i + 1), pc = i < 3 ? mc[i] : '';
     return `<div class="rank-card">
       <div class="rank-pos ${pc}">${pos}</div>
       <div class="rank-av">${ini}</div>
-      <div class="rank-info"><div class="rank-name">${p.name}</div><div class="rank-detail">${p.activities} atividades</div></div>
+      <div class="rank-info"><div class="rank-name">${esc(p.name)}</div><div class="rank-detail">${p.activities} atividades</div></div>
       <div><div class="rank-pts">${p.points}</div><div class="rank-pts-lbl">pts</div></div>
     </div>`;
   }).join('');
-  el.innerHTML = `<p class="section-title">${lblMap[tab]}</p><div class="rank-list">${rows||'<div class="empty">Nenhum dado ainda</div>'}</div>`;
+  el.innerHTML = `<p class="section-title">${lblMap[tab]}</p><div class="rank-list">${rows || '<div class="empty">Nenhum dado ainda</div>'}</div>`;
 }
 
 // ── TABS ──────────────────────────────────────────────
 function switchTab(tab) {
-  ['Today','Ranking','Profile'].forEach(t => {
+  ['Today', 'Ranking', 'Profile'].forEach(t => {
     const key = t.toLowerCase();
-    document.getElementById('tab'+t).style.display = key===tab ? 'block' : 'none';
-    document.getElementById('tabBtn'+t).classList.toggle('active', key===tab);
-    document.getElementById('nav'+t).classList.toggle('active', key===tab);
+    document.getElementById('tab' + t).style.display = key === tab ? 'block' : 'none';
+    document.getElementById('tabBtn' + t).classList.toggle('active', key === tab);
+    document.getElementById('nav' + t).classList.toggle('active', key === tab);
   });
   if (tab === 'ranking') loadRanking();
   if (tab === 'profile') loadProfile();
@@ -703,18 +836,18 @@ function switchTab(tab) {
 
 // ── API ───────────────────────────────────────────────
 async function apiFetch(params) {
-  const r = await fetch(SCRIPT_URL + params, { cache:'no-store' });
+  const r = await fetch(SCRIPT_URL + params, { cache: 'no-store' });
   return r.json();
 }
 async function apiPost(body) {
-  const r = await fetch(SCRIPT_URL, { method:'POST', headers:{'Content-Type':'text/plain'}, body:JSON.stringify(body) });
+  const r = await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(body) });
   return r.json();
 }
 
 // ── SHA-256 (Web Crypto API — nativo no browser) ──────
 async function sha256(str) {
-  const buf  = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
-  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
 function enc(s) { return encodeURIComponent(s); }
@@ -725,6 +858,132 @@ function toast(msg, isErr) {
   t.className   = 'toast' + (isErr ? ' error' : '');
   t.classList.add('show');
   setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// ── ADMIN DESAFIO ─────────────────────────────────────
+async function renderAdminDesafio(el) {
+  el.innerHTML = '<div class="loading"><div class="spinner"></div>Carregando...</div>';
+  try {
+    const r       = await apiFetch('?action=config');
+    const current = esc(r.desafio_alimentar || '');
+    el.innerHTML  = `
+      <p class="section-title">Desafio alimentar da semana</p>
+      <div style="background:white;border-radius:var(--rlg);padding:16px;border:1px solid var(--gray100)">
+        <label class="field-label">Texto do desafio</label>
+        <textarea id="desafioText" class="field" rows="4" style="resize:vertical;height:auto">${current}</textarea>
+        <div class="err-msg" id="desafioErr"></div>
+        <button class="btn" id="saveDesafioBtn" onclick="saveDesafio()">Salvar</button>
+      </div>`;
+  } catch(e) {
+    el.innerHTML = '<div class="empty"><span class="empty-ico">⚠️</span>Erro ao carregar.</div>';
+  }
+}
+
+async function saveDesafio() {
+  const textEl = document.getElementById('desafioText');
+  const btn    = document.getElementById('saveDesafioBtn');
+  const err    = document.getElementById('desafioErr');
+  const text   = textEl ? textEl.value.trim() : '';
+  err.classList.remove('show');
+  if (!text) { err.textContent = 'O desafio não pode estar vazio.'; err.classList.add('show'); return; }
+  btn.disabled = true; btn.textContent = 'Salvando...';
+  try {
+    const r = await apiPost({ action: 'adminSetConfig', adminToken, key: 'desafio_alimentar', value: text });
+    if (r.auth === false) { show('adminLoginScreen'); return; }
+    if (r.success) { toast('✓ Desafio atualizado!'); }
+    else { err.textContent = r.error || 'Erro ao salvar.'; err.classList.add('show'); }
+  } catch(e) { err.textContent = 'Sem conexão.'; err.classList.add('show'); }
+  btn.disabled = false; btn.textContent = 'Salvar';
+}
+
+// ── ADMIN USUÁRIOS ────────────────────────────────────
+function renderAdminUsuarios(el) {
+  adminUsers = adminData.userList || adminData.ranking || [];
+  const rows = adminUsers.map((u, i) => {
+    const ini = esc(u.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase());
+    const pts = u.totalPoints !== undefined ? u.totalPoints : (u.points || 0);
+    return `
+    <div class="presence-row" style="flex-wrap:wrap;gap:8px;padding:12px 0">
+      <div style="display:flex;align-items:center;gap:10px;width:100%">
+        <div class="rank-av">${ini}</div>
+        <div style="flex:1">
+          <div style="font-size:14px;font-weight:600">${esc(u.name)}</div>
+          <div style="font-size:12px;color:var(--gray400)">${pts} pts · desde ${fmtDate(u.since||'')}</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:6px;width:100%">
+        <button class="btn outline" style="flex:1;padding:8px;font-size:12px" onclick="toggleUserProfile(${i})">Ver perfil</button>
+        <button class="btn outline" style="flex:1;padding:8px;font-size:12px" onclick="toggleResetPass(${i})">Resetar senha</button>
+      </div>
+      <div id="adminUserProfile_${i}" style="display:none;width:100%;margin-top:4px"></div>
+      <div id="adminResetPass_${i}" style="display:none;width:100%;margin-top:4px">
+        <input type="password" id="adminNewPass_${i}" class="field" placeholder="Nova senha (mín. 4 caracteres)" style="margin-bottom:6px">
+        <button class="btn" style="padding:10px;font-size:13px" onclick="doAdminResetPass(${i})">Confirmar reset</button>
+      </div>
+    </div>`;
+  }).join('');
+  el.innerHTML = `<p class="section-title">Participantes (${adminUsers.length})</p>
+    <div style="display:flex;flex-direction:column">${rows || '<div class="empty">Nenhum participante ainda</div>'}</div>`;
+}
+
+async function toggleUserProfile(idx) {
+  const el = document.getElementById('adminUserProfile_' + idx);
+  if (!el) return;
+  if (el.style.display !== 'none') { el.style.display = 'none'; return; }
+  el.style.display = 'block';
+  el.innerHTML = '<div class="loading" style="padding:12px 0"><div class="spinner"></div>Carregando...</div>';
+  const name = adminUsers[idx] && adminUsers[idx].name;
+  if (!name) return;
+  try {
+    const r = await apiFetch(`?action=adminGetProfile&name=${enc(name)}&adminToken=${enc(adminToken || '')}`);
+    if (r.auth === false) { show('adminLoginScreen'); return; }
+    const actLabels = { cardio: '🏃 Cardio', gym: '🏋️ Func./Academia', food: '🥗 Alimentação' };
+    const history   = (r.history || []).slice(0, 10).map(row => {
+      const chips = (row.activities || []).map(a => `<span class="hist-chip ${esc(a)}">${esc(actLabels[a] || a)}</span>`).join('');
+      return `<div class="hist-row"><div class="hist-date">${fmtDate(row.date)}</div><div class="hist-acts">${chips}</div><div class="hist-pts">+${row.points}</div></div>`;
+    }).join('');
+    el.innerHTML = `
+      <div style="background:var(--g50);border-radius:var(--rmd);padding:12px;border:1px solid var(--g100)">
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:8px">
+          <div class="profile-stat" style="background:var(--g800)"><div class="profile-stat-val">${r.totalPoints||0}</div><div class="profile-stat-lbl">Pontos</div></div>
+          <div class="profile-stat" style="background:var(--g800)"><div class="profile-stat-val">${r.totalDays||0}</div><div class="profile-stat-lbl">Dias</div></div>
+          <div class="profile-stat" style="background:var(--g800)"><div class="profile-stat-val">#${r.rank||'—'}</div><div class="profile-stat-lbl">Posição</div></div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:8px;text-align:center;font-size:12px">
+          <div><div style="font-weight:700;color:var(--b400)">${r.cardioCount||0}</div><div style="color:var(--gray400)">🏃 Cardios</div></div>
+          <div><div style="font-weight:700;color:var(--g600)">${r.gymCount||0}</div><div style="color:var(--gray400)">🏋️ Treinos</div></div>
+          <div><div style="font-weight:700;color:var(--a400)">${r.foodCount||0}</div><div style="color:var(--gray400)">🥗 Aliment.</div></div>
+        </div>
+        <p class="section-title" style="margin-bottom:4px">Últimos 10 dias</p>
+        ${history || '<p style="font-size:13px;color:var(--gray400);padding:8px 0">Sem atividades registradas.</p>'}
+      </div>`;
+  } catch(e) {
+    el.innerHTML = '<p style="font-size:13px;color:var(--gray400);padding:8px 0">Erro ao carregar perfil.</p>';
+  }
+}
+
+function toggleResetPass(idx) {
+  const el = document.getElementById('adminResetPass_' + idx);
+  if (!el) return;
+  el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+
+async function doAdminResetPass(idx) {
+  const name   = adminUsers[idx] && adminUsers[idx].name;
+  const passEl = document.getElementById('adminNewPass_' + idx);
+  if (!name || !passEl) return;
+  const newPass = passEl.value;
+  if (newPass.length < 4) { toast('⚠️ Mínimo 4 caracteres.', true); return; }
+  try {
+    const hash = await sha256(newPass);
+    const r    = await apiPost({ action: 'adminResetPass', adminToken, name, newPassHash: hash });
+    if (r.auth === false) { show('adminLoginScreen'); return; }
+    if (r.success) {
+      passEl.value = '';
+      toggleResetPass(idx);
+      toast(`✓ Senha de ${name} resetada!`);
+    } else { toast('⚠️ ' + (r.error || 'Erro ao resetar.'), true); }
+  } catch(e) { toast('⚠️ Sem conexão.', true); }
 }
 
 init();
