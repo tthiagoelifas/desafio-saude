@@ -18,8 +18,6 @@ function doGet(e) {
   if (action === 'ranking')         return getRanking();
   if (action === 'init')            return getInitData(p);
   if (action === 'adminGetProfile') return adminGetUserProfile(p);
-  if (action === 'today')           return getToday(p.name, p.date, p.token);
-  if (action === 'weekpresence') return getWeekPresence(p.name, p.dates, p.token);
   if (action === 'profile')      return getProfile(p.name, p.token);
   if (action === 'admin')        return getAdminDashboard(p.adminToken);
   if (action === 'config')       return getConfig();
@@ -65,7 +63,7 @@ function registerUser(d) {
     }
   }
 
-  sheet.appendRow([name, passHash, new Date().toISOString()]);
+  sheet.appendRow([name, passHash, Utilities.formatDate(new Date(), 'America/Sao_Paulo', "yyyy-MM-dd'T'HH:mm:ss")]);
   return json({ success: true, storedName: name });
 }
 
@@ -208,19 +206,6 @@ function getInitData(p) {
 //  ATIVIDADES
 // ══════════════════════════════════════════════════════
 
-function getToday(name, date, token) {
-  if (!validateToken(name, token)) return json({ auth: false });
-  const rows       = getActSheet().getDataRange().getValues();
-  const activities = {};
-  const lname      = name.toLowerCase();
-  for (let i = 1; i < rows.length; i++) {
-    if (rows[i][1].toString().toLowerCase() === lname && normalizeDate(rows[i][3]) === date) {
-      activities[rows[i][2]] = true;
-    }
-  }
-  return json({ activities });
-}
-
 function saveActivity(d) {
   if (!validateToken(d.name, d.token)) return json({ auth: false });
 
@@ -255,21 +240,6 @@ function saveActivity(d) {
   sheet.appendRow([new Date().toISOString(), d.name, d.activity, d.date]);
   CacheService.getScriptCache().remove('ranking');
   return json({ success: true, action: 'saved' });
-}
-
-function getWeekPresence(name, datesStr, token) {
-  if (!validateToken(name, token)) return json({ auth: false });
-  const dates    = (datesStr || '').split(',').filter(Boolean);
-  const rows     = getActSheet().getDataRange().getValues();
-  const presence = {};
-  const lname    = name.toLowerCase();
-  for (let i = 1; i < rows.length; i++) {
-    const nd = normalizeDate(rows[i][3]);
-    if (rows[i][1].toString().toLowerCase() === lname && dates.includes(nd)) {
-      presence[nd] = true;
-    }
-  }
-  return json({ presence });
 }
 
 // ══════════════════════════════════════════════════════
