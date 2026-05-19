@@ -18,8 +18,6 @@ function doGet(e) {
   if (action === 'ranking')         return getRanking();
   if (action === 'init')            return getInitData(p);
   if (action === 'adminGetProfile') return adminGetUserProfile(p);
-  if (action === 'today')           return getToday(p.name, p.date, p.token);
-  if (action === 'weekpresence') return getWeekPresence(p.name, p.dates, p.token);
   if (action === 'profile')      return getProfile(p.name, p.token);
   if (action === 'admin')        return getAdminDashboard(p.adminToken);
   if (action === 'config')       return getConfig();
@@ -65,7 +63,7 @@ function registerUser(d) {
     }
   }
 
-  sheet.appendRow([name, passHash, new Date().toISOString()]);
+  sheet.appendRow([name, passHash, Utilities.formatDate(new Date(), 'America/Sao_Paulo', "yyyy-MM-dd'T'HH:mm:ss")]);
   return json({ success: true, storedName: name });
 }
 
@@ -145,6 +143,26 @@ function getConfig() {
   return json(config);
 }
 
+function getLocks() {
+  const cache  = CacheService.getScriptCache();
+  const cached = cache.get('config');
+  let cfg = {};
+  if (cached) {
+    cfg = JSON.parse(cached);
+  } else {
+    const rows = getConfigSheet().getDataRange().getValues();
+    for (let i = 1; i < rows.length; i++) {
+      if (rows[i][0]) cfg[rows[i][0].toString()] = rows[i][1].toString();
+    }
+  }
+  return {
+    cardio: cfg.lock_cardio === '1',
+    gym:    cfg.lock_gym    === '1',
+    food:   cfg.lock_food   === '1',
+    bonus:  cfg.lock_bonus  === '1',
+  };
+}
+
 function getInitData(p) {
   if (!validateToken(p.name, p.token)) return json({ auth: false });
 
@@ -170,32 +188,31 @@ function getInitData(p) {
   for (let i = 1; i < actRows.length; i++) {
     if (actRows[i][1].toString().toLowerCase() !== lname) continue;
     const nd = normalizeDate(actRows[i][3]);
-    if (nd === p.date)       activities[actRows[i][2]] = true;
-    if (dates.includes(nd))  presence[nd] = true;
+    if (nd === p.date)                                    activities[actRows[i][2]] = true;
+    if (dates.includes(nd) && actRows[i][2] === 'gym')   presence[nd] = true;
   }
 
-  return json({ desafio_alimentar: configData.desafio_alimentar || '', activities, presence });
+  const locks = {
+    cardio: configData.lock_cardio === '1',
+    gym:    configData.lock_gym    === '1',
+    food:   configData.lock_food   === '1',
+    bonus:  configData.lock_bonus  === '1',
+  };
+
+  return json({ desafio_alimentar: configData.desafio_alimentar || '', activities, presence, locks });
 }
 
 // ══════════════════════════════════════════════════════
 //  ATIVIDADES
 // ══════════════════════════════════════════════════════
 
-function getToday(name, date, token) {
-  if (!validateToken(name, token)) return json({ auth: false });
-  const rows       = getActSheet().getDataRange().getValues();
-  const activities = {};
-  const lname      = name.toLowerCase();
-  for (let i = 1; i < rows.length; i++) {
-    if (rows[i][1].toString().toLowerCase() === lname && normalizeDate(rows[i][3]) === date) {
-      activities[rows[i][2]] = true;
-    }
-  }
-  return json({ activities });
-}
-
 function saveActivity(d) {
   if (!validateToken(d.name, d.token)) return json({ auth: false });
+
+  if (!d.remove) {
+    const locks = getLocks();
+    if (locks[d.activity]) return json({ success: false, locked: true, error: 'Atividade bloqueada pelo administrador.' });
+  }
 
   const sheet  = getActSheet();
   const rows   = sheet.getDataRange().getValues();
@@ -225,21 +242,6 @@ function saveActivity(d) {
   return json({ success: true, action: 'saved' });
 }
 
-function getWeekPresence(name, datesStr, token) {
-  if (!validateToken(name, token)) return json({ auth: false });
-  const dates    = (datesStr || '').split(',').filter(Boolean);
-  const rows     = getActSheet().getDataRange().getValues();
-  const presence = {};
-  const lname    = name.toLowerCase();
-  for (let i = 1; i < rows.length; i++) {
-    const nd = normalizeDate(rows[i][3]);
-    if (rows[i][1].toString().toLowerCase() === lname && dates.includes(nd)) {
-      presence[nd] = true;
-    }
-  }
-  return json({ presence });
-}
-
 // ══════════════════════════════════════════════════════
 //  PROFILE
 // ══════════════════════════════════════════════════════
@@ -267,7 +269,7 @@ function getProfile(name, token) {
     return { date, activities: acts, points: acts.length };
   });
 
-  const scores  = buildScores(actRows);
+  const scores  = buildScores(actRows, getLocks());
   const myScore = scores[userRow ? userRow[0] : name] || { total: 0, actCount: 0 };
   const ranking = toRankingArray(scores, 'total');
   const rank    = ranking.findIndex(p => p.name.toLowerCase() === lname) + 1;
@@ -309,7 +311,7 @@ function getRanking() {
   if (cached) return json(JSON.parse(cached));
 
   const rows   = getActSheet().getDataRange().getValues();
-  const scores = buildScores(rows);
+  const scores = buildScores(rows, getLocks());
   const data   = {
     ranking:       toRankingArray(scores, 'total'),
     cardioRanking: toRankingArray(scores, 'cardio'),
@@ -331,7 +333,8 @@ function getAdminDashboard(adminToken) {
   const uRows     = getUserSheet().getDataRange().getValues();
   const todayStr  = Utilities.formatDate(new Date(), 'America/Sao_Paulo', 'yyyy-MM-dd');
   const weekDates = getCurrentWeekDates();
-  const scores    = buildScores(actRows);
+  const locks     = getLocks();
+  const scores    = buildScores(actRows, locks);
 
   const participants   = new Set(uRows.slice(1).map(r => r[0]).filter(Boolean));
   const activeTodaySet = new Set();
@@ -390,12 +393,14 @@ function normalizeDate(val) {
   return val.toString().trim();
 }
 
-function buildScores(rows) {
+function buildScores(rows, locks) {
+  locks = locks || {};
   const map  = {};
   const seen = new Set();
   rows.slice(1).forEach(r => {
     const name = r[1], act = r[2], date = normalizeDate(r[3]);
     if (!name || !act || !date) return;
+    if (locks[act]) return;
     const dedupeKey = `${name.toString().toLowerCase()}|${act}|${date}`;
     if (seen.has(dedupeKey)) return;
     seen.add(dedupeKey);
@@ -403,13 +408,17 @@ function buildScores(rows) {
     map[name][act]      = (map[name][act] || 0) + 1;
     map[name].total    += 1;
     map[name].actCount += 1;
-    const wk = weekKey(new Date(date + 'T12:00:00'));
-    if (!map[name].weekDays[wk]) map[name].weekDays[wk] = new Set();
-    map[name].weekDays[wk].add(date);
+    if (act === 'gym') {
+      const wk = weekKey(new Date(date + 'T12:00:00'));
+      if (!map[name].weekDays[wk]) map[name].weekDays[wk] = new Set();
+      map[name].weekDays[wk].add(date);
+    }
   });
-  Object.values(map).forEach(s => {
-    Object.values(s.weekDays).forEach(days => { if (days.size >= 5) s.total += 3; });
-  });
+  if (!locks.bonus) {
+    Object.values(map).forEach(s => {
+      Object.values(s.weekDays).forEach(days => { if (days.size >= 5) s.total += 3; });
+    });
+  }
   return map;
 }
 
@@ -552,7 +561,7 @@ function adminGetUserProfile(params) {
     return { date, activities: acts, points: acts.length };
   });
 
-  const scores  = buildScores(actRows);
+  const scores  = buildScores(actRows, getLocks());
   const myScore = scores[userRow[0]] || { total: 0, actCount: 0, cardio: 0, gym: 0, food: 0 };
   const ranking = toRankingArray(scores, 'total');
   const rank    = ranking.findIndex(u => u.name.toLowerCase() === lname) + 1;

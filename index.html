@@ -70,22 +70,33 @@ body{font-family:'DM Sans',sans-serif;background:var(--g50);color:var(--gray900)
 .today-acts{font-size:13px;color:rgba(255,255,255,.65);margin-top:3px;}
 .today-bonus{font-size:11px;color:var(--a400);margin-top:3px;font-weight:600;display:none;}
 .section-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--gray400);margin-bottom:10px;}
-.act-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px;}
-.act-card{background:white;border-radius:var(--rlg);border:1.5px solid var(--gray100);padding:15px 13px;cursor:pointer;transition:.15s;user-select:none;position:relative;}
-.act-card:active{transform:scale(.97);}
-.act-card.done{border-color:var(--g400);background:var(--g50);}
-.act-card.done::after{content:'✓';position:absolute;top:8px;right:10px;font-size:12px;font-weight:700;color:var(--g400);}
+.act-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:18px;}
+.act-card{background:white;border-radius:var(--rlg);border:1.5px solid var(--gray100);padding:13px 10px;cursor:pointer;transition:.2s;user-select:none;position:relative;min-height:100px;display:flex;flex-direction:column;justify-content:flex-start;}
+.act-card:active{transform:scale(.96);}
+.act-card.done{border-color:var(--g400);border-width:2px;background:var(--g50);}
+.act-card.done::after{content:'✓';position:absolute;top:8px;right:8px;font-size:11px;font-weight:700;color:white;background:var(--g400);width:20px;height:20px;border-radius:50%;line-height:20px;text-align:center;}
 .act-card.loading-state{opacity:.5;pointer-events:none;}
-.act-emoji{font-size:24px;margin-bottom:7px;display:block;}
-.act-name{font-size:13px;font-weight:600;color:var(--gray700);display:block;margin-bottom:1px;}
-.act-pts{font-size:11px;color:var(--gray400);}
+.act-emoji{font-size:22px;margin-bottom:6px;display:block;}
+.act-name{font-size:12px;font-weight:600;color:var(--gray700);display:block;margin-bottom:2px;line-height:1.3;}
+.act-pts{font-size:10px;color:var(--gray400);line-height:1.3;}
+.act-done-label{font-size:10px;font-weight:700;color:var(--g600);display:none;margin-top:2px;}
 .act-card.done .act-name{color:var(--g600);}
-.food-card{background:var(--a100);border-radius:var(--rlg);padding:15px;margin-bottom:16px;border:1px solid #f0d088;}
-.food-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--a400);margin-bottom:6px;}
-.food-text{font-size:14px;color:#6b4c10;font-weight:500;line-height:1.5;margin-bottom:10px;}
-.food-btn{padding:12px 20px;border-radius:20px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;border:none;background:var(--a400);color:white;transition:.15s;}
-.food-btn.done{background:var(--g400);}
-.food-btn:disabled{opacity:.6;cursor:default;}
+.act-card.done .act-pts{display:none;}
+.act-card.done .act-done-label{display:block;}
+.act-card.locked{background:var(--gray50);border-color:var(--gray200);pointer-events:none;cursor:default;}
+.act-card.locked .act-emoji{filter:grayscale(1);opacity:.6;}
+.act-card.locked .act-name{color:var(--gray400);}
+.act-card.locked .act-pts{display:none;}
+.act-lock-badge{font-size:10px;font-weight:700;color:var(--gray400);display:none;margin-top:2px;}
+.act-card.locked .act-lock-badge{display:block;}
+.bonus-card.locked{opacity:.55;}
+.bonus-card.locked .bonus-days{opacity:.4;pointer-events:none;}
+.bonus-locked-msg{font-size:12px;color:var(--gray400);font-weight:600;margin-bottom:8px;display:none;}
+.bonus-card.locked .bonus-locked-msg{display:block;}
+.bonus-card.locked p{display:none;}
+.food-info{background:var(--a100);border-radius:var(--rmd);padding:10px 13px;margin-bottom:14px;border:1px solid #f0d088;}
+.food-info-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--a400);margin-bottom:4px;}
+.food-info-text{font-size:13px;color:#6b4c10;font-weight:500;line-height:1.5;}
 .bonus-card{background:var(--b100);border-radius:var(--rlg);padding:15px;margin-bottom:16px;border:1px solid #aed4f0;}
 .bonus-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--b400);margin-bottom:6px;}
 .bonus-text{font-size:13px;color:#1a4d88;margin-bottom:10px;line-height:1.5;}
@@ -187,9 +198,32 @@ body{font-family:'DM Sans',sans-serif;background:var(--g50);color:var(--gray900)
   body.is-admin .pd{width:28px;height:28px;font-size:10px;}
   body.is-admin .admin-users-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start;}
 }
+
+/* ── ADMIN UTILS ── */
+.lock-row{display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--gray100);}
+.lock-label{flex:1;font-size:14px;font-weight:500;}
+.btn-sm{width:auto;padding:8px 18px;font-size:13px;margin:0;}
+.btn-flex{flex:1;padding:11px 8px;font-size:13px;}
+.user-row{flex-wrap:wrap;gap:8px;padding:12px 0;}
+.user-row-head{display:flex;align-items:center;gap:10px;width:100%;}
+.user-row-info{flex:1;}
+.user-name{font-size:14px;font-weight:600;}
+.user-sub{font-size:12px;color:var(--gray400);}
+.user-row-actions{display:flex;gap:6px;width:100%;}
+.admin-extra{width:100%;margin-top:4px;}
+.card-section{background:white;border-radius:var(--rlg);padding:16px;border:1px solid var(--gray100);}
+.profile-card{background:var(--g50);border-radius:var(--rmd);padding:12px;border:1px solid var(--g100);}
+.dark-stat{background:var(--g800);}
+.mini-stat-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:8px;}
+.mini-acts-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:8px;text-align:center;font-size:12px;}
+.acts-val-cardio{font-weight:700;color:var(--b400);}
+.acts-val-gym{font-weight:700;color:var(--g600);}
+.acts-val-food{font-weight:700;color:var(--a400);}
+.acts-sub{color:var(--gray400);}
 </style>
 </head>
 <body>
+<noscript><div style="text-align:center;padding:60px 20px;font-family:sans-serif;color:#3a3a36"><p>Este app requer JavaScript habilitado no navegador.</p></div></noscript>
 
 <!-- ══ WELCOME ══ -->
 <div id="welcomeScreen" class="screen active">
@@ -210,9 +244,9 @@ body{font-family:'DM Sans',sans-serif;background:var(--g50);color:var(--gray900)
     <p class="auth-sub">Entre com seu nome e senha.</p>
     <div class="auth-form">
       <div class="err-msg" id="loginErr">Nome ou senha incorretos.</div>
-      <label class="field-label">Nome de usuário</label>
+      <label class="field-label" for="loginName">Nome de usuário</label>
       <input type="text" id="loginName" class="field" placeholder="Seu usuário..." autocomplete="username">
-      <label class="field-label">Senha</label>
+      <label class="field-label" for="loginPass">Senha</label>
       <input type="password" id="loginPass" class="field" placeholder="Sua senha..." autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
       <button class="btn" id="loginBtn" onclick="doLogin()">Entrar</button>
       <button class="btn outline" onclick="show('welcomeScreen')">Voltar</button>
@@ -230,11 +264,11 @@ body{font-family:'DM Sans',sans-serif;background:var(--g50);color:var(--gray900)
     <p class="auth-sub">Escolha um usuário que você vai lembrar na hora de entrar.</p>
     <div class="auth-form">
       <div class="err-msg" id="registerErr">Verifique os campos e tente novamente.</div>
-      <label class="field-label">Nome de usuário</label>
+      <label class="field-label" for="regName">Nome de usuário</label>
       <input type="text" id="regName" class="field" placeholder="Ex: ana.silva ou AnaSilva" autocomplete="username">
-      <label class="field-label">Senha</label>
+      <label class="field-label" for="regPass">Senha</label>
       <input type="password" id="regPass" class="field" placeholder="Mínimo 4 caracteres..." autocomplete="new-password">
-      <label class="field-label">Confirmar senha</label>
+      <label class="field-label" for="regPass2">Confirmar senha</label>
       <input type="password" id="regPass2" class="field" placeholder="Repita a senha..." autocomplete="new-password" onkeydown="if(event.key==='Enter')doRegister()">
       <button class="btn" id="registerBtn" onclick="doRegister()">Criar conta 💪</button>
       <button class="btn outline" onclick="show('welcomeScreen')">Voltar</button>
@@ -251,7 +285,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--g50);color:var(--gray900)
     <p class="auth-sub">Acesso restrito ao organizador do desafio.</p>
     <div class="auth-form">
       <div class="err-msg" id="adminErr">Senha incorreta.</div>
-      <label class="field-label">Senha Admin</label>
+      <label class="field-label" for="adminPassInput">Senha Admin</label>
       <input type="password" id="adminPassInput" class="field" placeholder="Senha..." onkeydown="if(event.key==='Enter')checkAdmin()">
       <button class="btn" id="adminLoginBtn" onclick="checkAdmin()">Entrar</button>
       <button class="btn outline" onclick="show('loginScreen')">Voltar</button>
@@ -292,29 +326,40 @@ body{font-family:'DM Sans',sans-serif;background:var(--g50);color:var(--gray900)
       </div>
     </div>
 
+    <div class="food-info">
+      <div class="food-info-label">🍎 Desafio alimentar da semana</div>
+      <div class="food-info-text" id="foodChallenge">Carregando...</div>
+    </div>
+
     <p class="section-title">Marque o que fez hoje</p>
     <div class="act-grid">
       <div class="act-card" id="actCardio" onclick="toggleActivity('cardio')">
         <span class="act-emoji">🏃‍♀️</span>
         <span class="act-name">Cardio</span>
         <span class="act-pts">mín. 1km · +1 pt</span>
+        <span class="act-done-label">Feito hoje!</span>
+        <span class="act-lock-badge">🔒 Em breve</span>
       </div>
       <div class="act-card" id="actGym" onclick="toggleActivity('gym')">
         <span class="act-emoji">🏋️‍♀️</span>
         <span class="act-name">Atividade Física</span>
         <span class="act-pts">funcional ou academia · +1 pt</span>
+        <span class="act-done-label">Feito hoje!</span>
+        <span class="act-lock-badge">🔒 Em breve</span>
       </div>
-    </div>
-
-    <div class="food-card">
-      <div class="food-label">🥗 Desafio alimentar da semana</div>
-      <div class="food-text" id="foodChallenge">Carregando...</div>
-      <button class="food-btn" id="foodBtn" onclick="toggleActivity('food')">Marcar como feito · +1 pt</button>
+      <div class="act-card" id="actFood" onclick="toggleActivity('food')">
+        <span class="act-emoji">🥗</span>
+        <span class="act-name">Alimentação</span>
+        <span class="act-pts">desafio semanal · +1 pt</span>
+        <span class="act-done-label">Feito hoje!</span>
+        <span class="act-lock-badge">🔒 Em breve</span>
+      </div>
     </div>
 
     <div class="bonus-card">
       <div class="bonus-label">⭐ Bônus de semana completa</div>
-      <p style="font-size:13px;color:#1a4d88;margin-bottom:10px;line-height:1.5">Complete 5 dias com pelo menos 1 atividade e ganhe +3 pts extras!</p>
+      <div class="bonus-locked-msg">🔒 Bônus bloqueado — em breve</div>
+      <p style="font-size:13px;color:#1a4d88;margin-bottom:10px;line-height:1.5">Faça atividade física (funcional ou academia) em 5 dias na semana e ganhe +3 pts extras!</p>
       <div class="bonus-days" id="bonusDays"></div>
     </div>
   </div>
@@ -378,11 +423,15 @@ body{font-family:'DM Sans',sans-serif;background:var(--g50);color:var(--gray900)
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwZx7sB6rAEgX9Bp-FoBaEHH-9oin-gdsFegCUr_p7JF2JEzX0dapZs-sUAwsaSwlZ59w/exec';
 // ════════════════════════════════════
 
-const TODAY = new Date().toISOString().split('T')[0];
+function localDateStr(d) {
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+const TODAY = localDateStr(new Date());
 
 let session        = JSON.parse(localStorage.getItem('ds_session') || 'null');
 let adminToken     = sessionStorage.getItem('ds_admin_token') || null;
 let todayState     = {};
+let locksState     = {};
 let adminData      = null;
 let activeAdminTab = 'geral';
 let rankingData       = null;
@@ -524,7 +573,7 @@ async function loadInitData() {
   weekDatesCache = Array.from({ length: 7 }, (_, i) => {
     const d = new Date(now);
     d.setDate(now.getDate() - (dow - (i + 1)));
-    return d.toISOString().split('T')[0];
+    return localDateStr(d);
   });
 
   setCardsLoading(true);
@@ -534,19 +583,21 @@ async function loadInitData() {
     document.getElementById('foodChallenge').textContent = r.desafio_alimentar || 'Sem desafio alimentar esta semana.';
     todayState        = r.activities || {};
     weekPresenceCache = r.presence   || {};
+    locksState        = r.locks      || {};
   } catch(e) {
     toast('⚠️ Erro ao carregar dados', true);
     todayState        = {};
     weekPresenceCache = {};
+    locksState        = {};
   }
   setCardsLoading(false);
   renderToday();
+  renderLocks();
   renderBonusDaysLocal();
 }
 
 function setCardsLoading(on) {
-  ['actCardio', 'actGym'].forEach(id => document.getElementById(id).classList.toggle('loading-state', on));
-  document.getElementById('foodBtn').disabled = on;
+  ['actCardio', 'actGym', 'actFood'].forEach(id => document.getElementById(id).classList.toggle('loading-state', on));
 }
 
 // ── RENDER TODAY ──────────────────────────────────────
@@ -556,13 +607,10 @@ function renderToday() {
 
   document.getElementById('actCardio').classList.toggle('done', !!s.cardio);
   document.getElementById('actGym').classList.toggle('done',    !!s.gym);
+  document.getElementById('actFood').classList.toggle('done',   !!s.food);
   document.getElementById('pillCardio').classList.toggle('done', !!s.cardio);
   document.getElementById('pillGym').classList.toggle('done',   !!s.gym);
   document.getElementById('pillFood').classList.toggle('done',  !!s.food);
-
-  const fb = document.getElementById('foodBtn');
-  fb.textContent = s.food ? '✓ Feito hoje!' : 'Marcar como feito · +1 pt';
-  fb.classList.toggle('done', !!s.food);
 
   document.getElementById('todayPts').textContent = pts;
   const done = [s.cardio && 'cardio', s.gym && 'funcional', s.food && 'alimentação'].filter(Boolean);
@@ -574,16 +622,27 @@ function renderBonusDaysLocal() {
   const el     = document.getElementById('bonusDays');
   const labels = ['S', 'T', 'Q', 'Q', 'S', 'S', 'D'];
   el.innerHTML = weekDatesCache.map((date, i) => {
-    const cls = date === TODAY ? 'today-dot' : (weekPresenceCache[date] ? 'done' : '');
+    const gymDone = weekPresenceCache[date] || (date === TODAY && !!todayState.gym);
+    const cls     = date === TODAY ? 'today-dot' + (gymDone ? ' done' : '') : (gymDone ? 'done' : '');
     return `<div class="day-dot ${cls}">${labels[i]}</div>`;
   }).join('');
   const completedPrev = weekDatesCache.filter(d => d !== TODAY && weekPresenceCache[d]).length;
-  const todayDone     = Object.values(todayState).some(Boolean);
+  const todayDone     = !!todayState.gym;
   document.getElementById('todayBonus').style.display = (completedPrev + (todayDone ? 1 : 0)) >= 5 ? 'block' : 'none';
+}
+
+// ── LOCKS ─────────────────────────────────────────────
+function renderLocks() {
+  const actMap = { cardio: 'actCardio', gym: 'actGym', food: 'actFood' };
+  Object.entries(actMap).forEach(([act, id]) => {
+    document.getElementById(id).classList.toggle('locked', !!locksState[act]);
+  });
+  document.querySelector('.bonus-card').classList.toggle('locked', !!locksState.bonus);
 }
 
 // ── TOGGLE ACTIVITY ───────────────────────────────────
 async function toggleActivity(type) {
+  if (locksState[type]) return;
   const wasDone = !!todayState[type];
   // Atualiza UI imediatamente (otimista)
   wasDone ? delete todayState[type] : (todayState[type] = true);
@@ -711,13 +770,13 @@ function renderProfile(d) {
     ${histHTML}
     <div style="margin-top:24px">
       <button class="btn outline" id="changePassToggle" onclick="toggleChangePass()">Alterar senha</button>
-      <div id="changePassForm" style="display:none;margin-top:12px;background:white;border-radius:var(--rlg);padding:16px;border:1px solid var(--gray100)">
+      <div id="changePassForm" class="card-section" style="display:none;margin-top:12px">
         <div class="err-msg" id="changePassErr"></div>
-        <label class="field-label">Senha atual</label>
+        <label class="field-label" for="currPass">Senha atual</label>
         <input type="password" id="currPass" class="field" placeholder="Senha atual...">
-        <label class="field-label">Nova senha</label>
+        <label class="field-label" for="newPass">Nova senha</label>
         <input type="password" id="newPass" class="field" placeholder="Mínimo 4 caracteres...">
-        <label class="field-label">Confirmar nova senha</label>
+        <label class="field-label" for="newPass2">Confirmar nova senha</label>
         <input type="password" id="newPass2" class="field" placeholder="Confirmar nova senha...">
         <button class="btn" id="changePassBtn" onclick="doChangePassword()">Salvar nova senha</button>
       </div>
@@ -861,12 +920,24 @@ function switchTab(tab) {
 
 // ── API ───────────────────────────────────────────────
 async function apiFetch(params) {
-  const r = await fetch(SCRIPT_URL + params, { cache: 'no-store' });
-  return r.json();
+  const ctrl = new AbortController();
+  const tid  = setTimeout(() => ctrl.abort(), 10000);
+  try {
+    const r = await fetch(SCRIPT_URL + params, { cache: 'no-store', signal: ctrl.signal });
+    return r.json();
+  } finally {
+    clearTimeout(tid);
+  }
 }
 async function apiPost(body) {
-  const r = await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(body) });
-  return r.json();
+  const ctrl = new AbortController();
+  const tid  = setTimeout(() => ctrl.abort(), 10000);
+  try {
+    const r = await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(body), signal: ctrl.signal });
+    return r.json();
+  } finally {
+    clearTimeout(tid);
+  }
 }
 
 // ── SHA-256 (Web Crypto API — nativo no browser) ──────
@@ -891,17 +962,57 @@ async function renderAdminDesafio(el) {
   try {
     const r       = await apiFetch('?action=config');
     const current = esc(r.desafio_alimentar || '');
-    el.innerHTML  = `
+
+    const lockItems = [
+      { key: 'lock_cardio', label: '🏃 Cardio' },
+      { key: 'lock_gym',    label: '🏋️ Atividade Física' },
+      { key: 'lock_food',   label: '🥗 Alimentação' },
+      { key: 'lock_bonus',  label: '⭐ Bônus +3' },
+    ];
+    const lockRows = lockItems.map(item => {
+      const locked = r[item.key] === '1';
+      return `<div class="lock-row">
+        <div class="lock-label">${item.label}</div>
+        <button id="lockBtn_${item.key}" class="btn btn-sm ${locked ? 'danger' : 'outline'}" onclick="toggleLock('${item.key}')">
+          ${locked ? '🔒 Bloqueado' : '✓ Liberado'}
+        </button>
+      </div>`;
+    }).join('');
+
+    el.innerHTML = `
       <p class="section-title">Desafio alimentar da semana</p>
-      <div style="background:white;border-radius:var(--rlg);padding:16px;border:1px solid var(--gray100)">
-        <label class="field-label">Texto do desafio</label>
+      <div class="card-section" style="margin-bottom:20px">
+        <label class="field-label" for="desafioText">Texto do desafio</label>
         <textarea id="desafioText" class="field" rows="4" style="resize:vertical;height:auto">${current}</textarea>
         <div class="err-msg" id="desafioErr"></div>
         <button class="btn" id="saveDesafioBtn" onclick="saveDesafio()">Salvar</button>
+      </div>
+      <p class="section-title">Controle de atividades</p>
+      <div class="card-section" style="padding:0 16px">
+        ${lockRows}
       </div>`;
   } catch(e) {
     el.innerHTML = '<div class="empty"><span class="empty-ico">⚠️</span>Erro ao carregar.</div>';
   }
+}
+
+async function toggleLock(key) {
+  const btn = document.getElementById('lockBtn_' + key);
+  if (!btn) return;
+  const isLocked = btn.textContent.includes('Bloqueado');
+  const newVal   = isLocked ? '0' : '1';
+  btn.disabled   = true;
+  try {
+    const r = await apiPost({ action: 'adminSetConfig', adminToken, key, value: newVal });
+    if (r.auth === false) { show('adminLoginScreen'); return; }
+    if (r.success) {
+      const locked = newVal === '1';
+      btn.textContent = locked ? '🔒 Bloqueado' : '✓ Liberado';
+      btn.className   = `btn btn-sm ${locked ? 'danger' : 'outline'}`;
+      toast(locked ? '🔒 Atividade bloqueada' : '✓ Atividade liberada');
+    } else { toast('⚠️ Erro ao alterar.', true); }
+  } catch(e) { toast('⚠️ Sem conexão.', true); }
+  btn.disabled = false;
 }
 
 async function saveDesafio() {
@@ -928,22 +1039,22 @@ function renderAdminUsuarios(el) {
     const ini = esc(u.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase());
     const pts = u.totalPoints !== undefined ? u.totalPoints : (u.points || 0);
     return `
-    <div class="presence-row" style="flex-wrap:wrap;gap:8px;padding:12px 0">
-      <div style="display:flex;align-items:center;gap:10px;width:100%">
+    <div class="presence-row user-row">
+      <div class="user-row-head">
         <div class="rank-av">${ini}</div>
-        <div style="flex:1">
-          <div style="font-size:14px;font-weight:600">${esc(u.name)}</div>
-          <div style="font-size:12px;color:var(--gray400)">${pts} pts · desde ${fmtDate(u.since||'')}</div>
+        <div class="user-row-info">
+          <div class="user-name">${esc(u.name)}</div>
+          <div class="user-sub">${pts} pts · desde ${fmtDate(u.since||'')}</div>
         </div>
       </div>
-      <div style="display:flex;gap:6px;width:100%">
-        <button class="btn outline" style="flex:1;padding:11px 8px;font-size:13px" onclick="toggleUserProfile(${i})">Ver perfil</button>
-        <button class="btn outline" style="flex:1;padding:11px 8px;font-size:13px" onclick="toggleResetPass(${i})">Resetar senha</button>
+      <div class="user-row-actions">
+        <button class="btn outline btn-flex" onclick="toggleUserProfile(${i})">Ver perfil</button>
+        <button class="btn outline btn-flex" onclick="toggleResetPass(${i})">Resetar senha</button>
       </div>
-      <div id="adminUserProfile_${i}" style="display:none;width:100%;margin-top:4px"></div>
-      <div id="adminResetPass_${i}" style="display:none;width:100%;margin-top:4px">
+      <div id="adminUserProfile_${i}" class="admin-extra" style="display:none"></div>
+      <div id="adminResetPass_${i}" class="admin-extra" style="display:none">
         <input type="password" id="adminNewPass_${i}" class="field" placeholder="Nova senha (mín. 4 caracteres)" style="margin-bottom:6px">
-        <button class="btn" style="padding:10px;font-size:13px" onclick="doAdminResetPass(${i})">Confirmar reset</button>
+        <button class="btn btn-sm" onclick="doAdminResetPass(${i})">Confirmar reset</button>
       </div>
     </div>`;
   }).join('');
@@ -968,16 +1079,16 @@ async function toggleUserProfile(idx) {
       return `<div class="hist-row"><div class="hist-date">${fmtDate(row.date)}</div><div class="hist-acts">${chips}</div><div class="hist-pts">+${row.points}</div></div>`;
     }).join('');
     el.innerHTML = `
-      <div style="background:var(--g50);border-radius:var(--rmd);padding:12px;border:1px solid var(--g100)">
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:8px">
-          <div class="profile-stat" style="background:var(--g800)"><div class="profile-stat-val">${r.totalPoints||0}</div><div class="profile-stat-lbl">Pontos</div></div>
-          <div class="profile-stat" style="background:var(--g800)"><div class="profile-stat-val">${r.totalDays||0}</div><div class="profile-stat-lbl">Dias</div></div>
-          <div class="profile-stat" style="background:var(--g800)"><div class="profile-stat-val">#${r.rank||'—'}</div><div class="profile-stat-lbl">Posição</div></div>
+      <div class="profile-card">
+        <div class="mini-stat-grid">
+          <div class="profile-stat dark-stat"><div class="profile-stat-val">${r.totalPoints||0}</div><div class="profile-stat-lbl">Pontos</div></div>
+          <div class="profile-stat dark-stat"><div class="profile-stat-val">${r.totalDays||0}</div><div class="profile-stat-lbl">Dias</div></div>
+          <div class="profile-stat dark-stat"><div class="profile-stat-val">#${r.rank||'—'}</div><div class="profile-stat-lbl">Posição</div></div>
         </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:8px;text-align:center;font-size:12px">
-          <div><div style="font-weight:700;color:var(--b400)">${r.cardioCount||0}</div><div style="color:var(--gray400)">🏃 Cardios</div></div>
-          <div><div style="font-weight:700;color:var(--g600)">${r.gymCount||0}</div><div style="color:var(--gray400)">🏋️ Treinos</div></div>
-          <div><div style="font-weight:700;color:var(--a400)">${r.foodCount||0}</div><div style="color:var(--gray400)">🥗 Aliment.</div></div>
+        <div class="mini-acts-grid">
+          <div><div class="acts-val-cardio">${r.cardioCount||0}</div><div class="acts-sub">🏃 Cardios</div></div>
+          <div><div class="acts-val-gym">${r.gymCount||0}</div><div class="acts-sub">🏋️ Treinos</div></div>
+          <div><div class="acts-val-food">${r.foodCount||0}</div><div class="acts-sub">🥗 Aliment.</div></div>
         </div>
         <p class="section-title" style="margin-bottom:4px">Últimos 10 dias</p>
         ${history || '<p style="font-size:13px;color:var(--gray400);padding:8px 0">Sem atividades registradas.</p>'}
