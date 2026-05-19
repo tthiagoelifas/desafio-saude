@@ -145,6 +145,26 @@ function getConfig() {
   return json(config);
 }
 
+function getLocks() {
+  const cache  = CacheService.getScriptCache();
+  const cached = cache.get('config');
+  let cfg = {};
+  if (cached) {
+    cfg = JSON.parse(cached);
+  } else {
+    const rows = getConfigSheet().getDataRange().getValues();
+    for (let i = 1; i < rows.length; i++) {
+      if (rows[i][0]) cfg[rows[i][0].toString()] = rows[i][1].toString();
+    }
+  }
+  return {
+    cardio: cfg.lock_cardio === '1',
+    gym:    cfg.lock_gym    === '1',
+    food:   cfg.lock_food   === '1',
+    bonus:  cfg.lock_bonus  === '1',
+  };
+}
+
 function getInitData(p) {
   if (!validateToken(p.name, p.token)) return json({ auth: false });
 
@@ -174,7 +194,14 @@ function getInitData(p) {
     if (dates.includes(nd) && actRows[i][2] === 'gym')   presence[nd] = true;
   }
 
-  return json({ desafio_alimentar: configData.desafio_alimentar || '', activities, presence });
+  const locks = {
+    cardio: configData.lock_cardio === '1',
+    gym:    configData.lock_gym    === '1',
+    food:   configData.lock_food   === '1',
+    bonus:  configData.lock_bonus  === '1',
+  };
+
+  return json({ desafio_alimentar: configData.desafio_alimentar || '', activities, presence, locks });
 }
 
 // ══════════════════════════════════════════════════════
@@ -196,6 +223,11 @@ function getToday(name, date, token) {
 
 function saveActivity(d) {
   if (!validateToken(d.name, d.token)) return json({ auth: false });
+
+  if (!d.remove) {
+    const locks = getLocks();
+    if (locks[d.activity]) return json({ success: false, locked: true, error: 'Atividade bloqueada pelo administrador.' });
+  }
 
   const sheet  = getActSheet();
   const rows   = sheet.getDataRange().getValues();
@@ -267,7 +299,7 @@ function getProfile(name, token) {
     return { date, activities: acts, points: acts.length };
   });
 
-  const scores  = buildScores(actRows);
+  const scores  = buildScores(actRows, getLocks());
   const myScore = scores[userRow ? userRow[0] : name] || { total: 0, actCount: 0 };
   const ranking = toRankingArray(scores, 'total');
   const rank    = ranking.findIndex(p => p.name.toLowerCase() === lname) + 1;
@@ -309,7 +341,7 @@ function getRanking() {
   if (cached) return json(JSON.parse(cached));
 
   const rows   = getActSheet().getDataRange().getValues();
-  const scores = buildScores(rows);
+  const scores = buildScores(rows, getLocks());
   const data   = {
     ranking:       toRankingArray(scores, 'total'),
     cardioRanking: toRankingArray(scores, 'cardio'),
@@ -331,7 +363,8 @@ function getAdminDashboard(adminToken) {
   const uRows     = getUserSheet().getDataRange().getValues();
   const todayStr  = Utilities.formatDate(new Date(), 'America/Sao_Paulo', 'yyyy-MM-dd');
   const weekDates = getCurrentWeekDates();
-  const scores    = buildScores(actRows);
+  const locks     = getLocks();
+  const scores    = buildScores(actRows, locks);
 
   const participants   = new Set(uRows.slice(1).map(r => r[0]).filter(Boolean));
   const activeTodaySet = new Set();
@@ -390,12 +423,14 @@ function normalizeDate(val) {
   return val.toString().trim();
 }
 
-function buildScores(rows) {
+function buildScores(rows, locks) {
+  locks = locks || {};
   const map  = {};
   const seen = new Set();
   rows.slice(1).forEach(r => {
     const name = r[1], act = r[2], date = normalizeDate(r[3]);
     if (!name || !act || !date) return;
+    if (locks[act]) return;
     const dedupeKey = `${name.toString().toLowerCase()}|${act}|${date}`;
     if (seen.has(dedupeKey)) return;
     seen.add(dedupeKey);
@@ -409,9 +444,11 @@ function buildScores(rows) {
       map[name].weekDays[wk].add(date);
     }
   });
-  Object.values(map).forEach(s => {
-    Object.values(s.weekDays).forEach(days => { if (days.size >= 5) s.total += 3; });
-  });
+  if (!locks.bonus) {
+    Object.values(map).forEach(s => {
+      Object.values(s.weekDays).forEach(days => { if (days.size >= 5) s.total += 3; });
+    });
+  }
   return map;
 }
 
@@ -554,7 +591,7 @@ function adminGetUserProfile(params) {
     return { date, activities: acts, points: acts.length };
   });
 
-  const scores  = buildScores(actRows);
+  const scores  = buildScores(actRows, getLocks());
   const myScore = scores[userRow[0]] || { total: 0, actCount: 0, cardio: 0, gym: 0, food: 0 };
   const ranking = toRankingArray(scores, 'total');
   const rank    = ranking.findIndex(u => u.name.toLowerCase() === lname) + 1;
