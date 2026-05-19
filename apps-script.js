@@ -170,8 +170,8 @@ function getInitData(p) {
   for (let i = 1; i < actRows.length; i++) {
     if (actRows[i][1].toString().toLowerCase() !== lname) continue;
     const nd = normalizeDate(actRows[i][3]);
-    if (nd === p.date)       activities[actRows[i][2]] = true;
-    if (dates.includes(nd))  presence[nd] = true;
+    if (nd === p.date)                                    activities[actRows[i][2]] = true;
+    if (dates.includes(nd) && actRows[i][2] === 'gym')   presence[nd] = true;
   }
 
   return json({ desafio_alimentar: configData.desafio_alimentar || '', activities, presence });
@@ -403,9 +403,11 @@ function buildScores(rows) {
     map[name][act]      = (map[name][act] || 0) + 1;
     map[name].total    += 1;
     map[name].actCount += 1;
-    const wk = weekKey(new Date(date + 'T12:00:00'));
-    if (!map[name].weekDays[wk]) map[name].weekDays[wk] = new Set();
-    map[name].weekDays[wk].add(date);
+    if (act === 'gym') {
+      const wk = weekKey(new Date(date + 'T12:00:00'));
+      if (!map[name].weekDays[wk]) map[name].weekDays[wk] = new Set();
+      map[name].weekDays[wk].add(date);
+    }
   });
   Object.values(map).forEach(s => {
     Object.values(s.weekDays).forEach(days => { if (days.size >= 5) s.total += 3; });

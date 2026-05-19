@@ -70,22 +70,22 @@ body{font-family:'DM Sans',sans-serif;background:var(--g50);color:var(--gray900)
 .today-acts{font-size:13px;color:rgba(255,255,255,.65);margin-top:3px;}
 .today-bonus{font-size:11px;color:var(--a400);margin-top:3px;font-weight:600;display:none;}
 .section-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--gray400);margin-bottom:10px;}
-.act-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px;}
-.act-card{background:white;border-radius:var(--rlg);border:1.5px solid var(--gray100);padding:15px 13px;cursor:pointer;transition:.15s;user-select:none;position:relative;}
-.act-card:active{transform:scale(.97);}
-.act-card.done{border-color:var(--g400);background:var(--g50);}
-.act-card.done::after{content:'✓';position:absolute;top:8px;right:10px;font-size:12px;font-weight:700;color:var(--g400);}
+.act-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:18px;}
+.act-card{background:white;border-radius:var(--rlg);border:1.5px solid var(--gray100);padding:13px 10px;cursor:pointer;transition:.2s;user-select:none;position:relative;min-height:100px;display:flex;flex-direction:column;justify-content:flex-start;}
+.act-card:active{transform:scale(.96);}
+.act-card.done{border-color:var(--g400);border-width:2px;background:var(--g50);}
+.act-card.done::after{content:'✓';position:absolute;top:8px;right:8px;font-size:11px;font-weight:700;color:white;background:var(--g400);width:20px;height:20px;border-radius:50%;line-height:20px;text-align:center;}
 .act-card.loading-state{opacity:.5;pointer-events:none;}
-.act-emoji{font-size:24px;margin-bottom:7px;display:block;}
-.act-name{font-size:13px;font-weight:600;color:var(--gray700);display:block;margin-bottom:1px;}
-.act-pts{font-size:11px;color:var(--gray400);}
+.act-emoji{font-size:22px;margin-bottom:6px;display:block;}
+.act-name{font-size:12px;font-weight:600;color:var(--gray700);display:block;margin-bottom:2px;line-height:1.3;}
+.act-pts{font-size:10px;color:var(--gray400);line-height:1.3;}
+.act-done-label{font-size:10px;font-weight:700;color:var(--g600);display:none;margin-top:2px;}
 .act-card.done .act-name{color:var(--g600);}
-.food-card{background:var(--a100);border-radius:var(--rlg);padding:15px;margin-bottom:16px;border:1px solid #f0d088;}
-.food-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--a400);margin-bottom:6px;}
-.food-text{font-size:14px;color:#6b4c10;font-weight:500;line-height:1.5;margin-bottom:10px;}
-.food-btn{padding:12px 20px;border-radius:20px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;border:none;background:var(--a400);color:white;transition:.15s;}
-.food-btn.done{background:var(--g400);}
-.food-btn:disabled{opacity:.6;cursor:default;}
+.act-card.done .act-pts{display:none;}
+.act-card.done .act-done-label{display:block;}
+.food-info{background:var(--a100);border-radius:var(--rmd);padding:10px 13px;margin-bottom:14px;border:1px solid #f0d088;}
+.food-info-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--a400);margin-bottom:4px;}
+.food-info-text{font-size:13px;color:#6b4c10;font-weight:500;line-height:1.5;}
 .bonus-card{background:var(--b100);border-radius:var(--rlg);padding:15px;margin-bottom:16px;border:1px solid #aed4f0;}
 .bonus-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--b400);margin-bottom:6px;}
 .bonus-text{font-size:13px;color:#1a4d88;margin-bottom:10px;line-height:1.5;}
@@ -292,29 +292,36 @@ body{font-family:'DM Sans',sans-serif;background:var(--g50);color:var(--gray900)
       </div>
     </div>
 
+    <div class="food-info">
+      <div class="food-info-label">🍎 Desafio alimentar da semana</div>
+      <div class="food-info-text" id="foodChallenge">Carregando...</div>
+    </div>
+
     <p class="section-title">Marque o que fez hoje</p>
     <div class="act-grid">
       <div class="act-card" id="actCardio" onclick="toggleActivity('cardio')">
         <span class="act-emoji">🏃‍♀️</span>
         <span class="act-name">Cardio</span>
         <span class="act-pts">mín. 1km · +1 pt</span>
+        <span class="act-done-label">Feito hoje!</span>
       </div>
       <div class="act-card" id="actGym" onclick="toggleActivity('gym')">
         <span class="act-emoji">🏋️‍♀️</span>
         <span class="act-name">Atividade Física</span>
         <span class="act-pts">funcional ou academia · +1 pt</span>
+        <span class="act-done-label">Feito hoje!</span>
       </div>
-    </div>
-
-    <div class="food-card">
-      <div class="food-label">🥗 Desafio alimentar da semana</div>
-      <div class="food-text" id="foodChallenge">Carregando...</div>
-      <button class="food-btn" id="foodBtn" onclick="toggleActivity('food')">Marcar como feito · +1 pt</button>
+      <div class="act-card" id="actFood" onclick="toggleActivity('food')">
+        <span class="act-emoji">🥗</span>
+        <span class="act-name">Alimentação</span>
+        <span class="act-pts">desafio semanal · +1 pt</span>
+        <span class="act-done-label">Feito hoje!</span>
+      </div>
     </div>
 
     <div class="bonus-card">
       <div class="bonus-label">⭐ Bônus de semana completa</div>
-      <p style="font-size:13px;color:#1a4d88;margin-bottom:10px;line-height:1.5">Complete 5 dias com pelo menos 1 atividade e ganhe +3 pts extras!</p>
+      <p style="font-size:13px;color:#1a4d88;margin-bottom:10px;line-height:1.5">Faça atividade física (funcional ou academia) em 5 dias na semana e ganhe +3 pts extras!</p>
       <div class="bonus-days" id="bonusDays"></div>
     </div>
   </div>
@@ -378,7 +385,10 @@ body{font-family:'DM Sans',sans-serif;background:var(--g50);color:var(--gray900)
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwZx7sB6rAEgX9Bp-FoBaEHH-9oin-gdsFegCUr_p7JF2JEzX0dapZs-sUAwsaSwlZ59w/exec';
 // ════════════════════════════════════
 
-const TODAY = new Date().toISOString().split('T')[0];
+function localDateStr(d) {
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+const TODAY = localDateStr(new Date());
 
 let session        = JSON.parse(localStorage.getItem('ds_session') || 'null');
 let adminToken     = sessionStorage.getItem('ds_admin_token') || null;
@@ -524,7 +534,7 @@ async function loadInitData() {
   weekDatesCache = Array.from({ length: 7 }, (_, i) => {
     const d = new Date(now);
     d.setDate(now.getDate() - (dow - (i + 1)));
-    return d.toISOString().split('T')[0];
+    return localDateStr(d);
   });
 
   setCardsLoading(true);
@@ -545,8 +555,7 @@ async function loadInitData() {
 }
 
 function setCardsLoading(on) {
-  ['actCardio', 'actGym'].forEach(id => document.getElementById(id).classList.toggle('loading-state', on));
-  document.getElementById('foodBtn').disabled = on;
+  ['actCardio', 'actGym', 'actFood'].forEach(id => document.getElementById(id).classList.toggle('loading-state', on));
 }
 
 // ── RENDER TODAY ──────────────────────────────────────
@@ -556,13 +565,10 @@ function renderToday() {
 
   document.getElementById('actCardio').classList.toggle('done', !!s.cardio);
   document.getElementById('actGym').classList.toggle('done',    !!s.gym);
+  document.getElementById('actFood').classList.toggle('done',   !!s.food);
   document.getElementById('pillCardio').classList.toggle('done', !!s.cardio);
   document.getElementById('pillGym').classList.toggle('done',   !!s.gym);
   document.getElementById('pillFood').classList.toggle('done',  !!s.food);
-
-  const fb = document.getElementById('foodBtn');
-  fb.textContent = s.food ? '✓ Feito hoje!' : 'Marcar como feito · +1 pt';
-  fb.classList.toggle('done', !!s.food);
 
   document.getElementById('todayPts').textContent = pts;
   const done = [s.cardio && 'cardio', s.gym && 'funcional', s.food && 'alimentação'].filter(Boolean);
@@ -578,7 +584,7 @@ function renderBonusDaysLocal() {
     return `<div class="day-dot ${cls}">${labels[i]}</div>`;
   }).join('');
   const completedPrev = weekDatesCache.filter(d => d !== TODAY && weekPresenceCache[d]).length;
-  const todayDone     = Object.values(todayState).some(Boolean);
+  const todayDone     = !!todayState.gym;
   document.getElementById('todayBonus').style.display = (completedPrev + (todayDone ? 1 : 0)) >= 5 ? 'block' : 'none';
 }
 
