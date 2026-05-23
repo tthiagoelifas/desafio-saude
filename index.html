@@ -104,6 +104,21 @@ body{font-family:'DM Sans',sans-serif;background:var(--g50);color:var(--gray900)
 .day-dot{width:30px;height:30px;border-radius:50%;background:var(--gray100);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:var(--gray400);}
 .day-dot.done{background:var(--g400);color:white;}
 .day-dot.today-dot{background:var(--b400);color:white;}
+.hist-bonus-row{background:#fffbeb;border-radius:8px;padding:8px 10px;margin:2px 0;border:1px solid #fde68a;}
+.hist-bonus-row .hist-date{color:#b45309;font-weight:700;}
+.hist-bonus-row .hist-acts{color:#b45309;font-size:12px;font-weight:600;}
+.hist-bonus-row .hist-pts{color:#b45309;font-weight:700;}
+.bonus-breakdown{font-size:12px;color:rgba(255,255,255,.6);margin-top:6px;text-align:center;}
+.bonus-breakdown span{color:var(--a400);font-weight:700;}
+/* ── CELEBRAÇÃO BÔNUS ── */
+.bonus-celebrate{position:fixed;inset:0;z-index:200;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.45);animation:fadeIn .25s;}
+.bonus-celebrate-box{background:white;border-radius:20px;padding:32px 28px;text-align:center;max-width:300px;width:90%;animation:popIn .3s;}
+.bonus-celebrate-emoji{font-size:52px;margin-bottom:8px;}
+.bonus-celebrate-title{font-family:'DM Serif Display',serif;font-size:22px;color:var(--g800);margin-bottom:6px;}
+.bonus-celebrate-sub{font-size:14px;color:var(--gray400);line-height:1.5;margin-bottom:20px;}
+.bonus-celebrate-pts{font-size:28px;font-weight:800;color:var(--g600);margin-bottom:20px;}
+@keyframes popIn{from{transform:scale(.8);opacity:0}to{transform:scale(1);opacity:1}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
 
 /* ── RANKING ── */
 .rank-list{display:flex;flex-direction:column;gap:9px;}
@@ -361,6 +376,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--g50);color:var(--gray900)
       <div class="bonus-locked-msg">🔒 Bônus bloqueado — em breve</div>
       <p style="font-size:13px;color:#1a4d88;margin-bottom:10px;line-height:1.5">Faça atividade física (funcional ou academia) em 5 dias na semana e ganhe +3 pts extras!</p>
       <div class="bonus-days" id="bonusDays"></div>
+      <div id="bonusCounter" style="font-size:12px;font-weight:700;color:var(--b400);margin-top:8px"></div>
     </div>
   </div>
 
@@ -617,18 +633,45 @@ function renderToday() {
   document.getElementById('todayActs').textContent = done.length ? '✓ ' + done.join(' · ') : 'Nenhuma atividade ainda';
 }
 
+// ── WEEK KEY (espelho do backend) ─────────────────────
+function weekKey(dateStr) {
+  const d = new Date(dateStr + 'T12:00:00');
+  d.setDate(d.getDate() + 3 - (d.getDay() + 6) % 7);
+  const w1 = new Date(d.getFullYear(), 0, 4);
+  const wn = 1 + Math.round(((d - w1) / 86400000 - 3 + (w1.getDay() + 6) % 7) / 7);
+  return d.getFullYear() + '-W' + String(wn).padStart(2, '0');
+}
+
+// ── CELEBRAÇÃO BÔNUS ──────────────────────────────────
+function showBonusCelebration() {
+  const el = document.createElement('div');
+  el.className = 'bonus-celebrate';
+  el.innerHTML = `
+    <div class="bonus-celebrate-box">
+      <div class="bonus-celebrate-emoji">🎉</div>
+      <div class="bonus-celebrate-title">Bônus conquistado!</div>
+      <div class="bonus-celebrate-sub">Você treinou 5 dias esta semana. Parabéns!</div>
+      <div class="bonus-celebrate-pts">+3 pts</div>
+      <button class="btn" style="margin:0" onclick="this.closest('.bonus-celebrate').remove()">Boa demais! 💪</button>
+    </div>`;
+  document.body.appendChild(el);
+  el.addEventListener('click', e => { if (e.target === el) el.remove(); });
+}
+
 // ── BONUS DAYS ────────────────────────────────────────
 function renderBonusDaysLocal() {
   const el     = document.getElementById('bonusDays');
   const labels = ['S', 'T', 'Q', 'Q', 'S', 'S', 'D'];
   el.innerHTML = weekDatesCache.map((date, i) => {
     const gymDone = weekPresenceCache[date] || (date === TODAY && !!todayState.gym);
-    const cls     = date === TODAY ? 'today-dot' + (gymDone ? ' done' : '') : (gymDone ? 'done' : '');
-    return `<div class="day-dot ${cls}">${labels[i]}</div>`;
+    return `<div class="day-dot ${gymDone ? 'done' : ''}">${labels[i]}</div>`;
   }).join('');
   const completedPrev = weekDatesCache.filter(d => d !== TODAY && weekPresenceCache[d]).length;
   const todayDone     = !!todayState.gym;
-  document.getElementById('todayBonus').style.display = (completedPrev + (todayDone ? 1 : 0)) >= 5 ? 'block' : 'none';
+  const total         = completedPrev + (todayDone ? 1 : 0);
+  document.getElementById('todayBonus').style.display = total >= 5 ? 'block' : 'none';
+  const counter = document.getElementById('bonusCounter');
+  counter.textContent = total >= 5 ? '✅ Meta atingida! Bônus garantido.' : `${total}/5 dias concluídos`;
 }
 
 // ── LOCKS ─────────────────────────────────────────────
@@ -648,6 +691,10 @@ async function toggleActivity(type) {
   wasDone ? delete todayState[type] : (todayState[type] = true);
   renderToday();
   renderBonusDaysLocal();
+  if (type === 'gym' && !wasDone) {
+    const prevCount = weekDatesCache.filter(d => d !== TODAY && weekPresenceCache[d]).length;
+    if (prevCount === 4) setTimeout(showBonusCelebration, 400);
+  }
   try {
     const r = await apiPost({ action: 'activity', name: session.name, token: session.token, activity: type, date: TODAY, remove: wasDone });
     if (r.auth === false) { doLogout(); return; }
@@ -741,8 +788,37 @@ function renderProfile(d) {
     </div>`;
   };
 
-  const visibleRows = history.slice(0, SHOW_INIT).map(makeHistRow).join('');
-  const hiddenRows  = history.slice(SHOW_INIT).map(makeHistRow).join('');
+  // calcula semanas com bônus
+  const gymByWeek = {};
+  history.forEach(row => {
+    if ((row.activities || []).includes('gym')) {
+      const wk = weekKey(row.date);
+      if (!gymByWeek[wk]) gymByWeek[wk] = 0;
+      gymByWeek[wk]++;
+    }
+  });
+  const bonusWeeks = new Set(Object.entries(gymByWeek).filter(([,c]) => c >= 5).map(([wk]) => wk));
+
+  const makeBonusRow = () =>
+    `<div class="hist-row hist-bonus-row">
+      <div class="hist-date">⭐ Bônus</div>
+      <div class="hist-acts">Semana completa (5 dias)</div>
+      <div class="hist-pts">+3</div>
+    </div>`;
+
+  // injeta linhas de bônus ao mudar de semana
+  const allRows = [];
+  let lastWk = null;
+  history.forEach(row => {
+    const wk = weekKey(row.date);
+    if (lastWk && lastWk !== wk && bonusWeeks.has(lastWk)) allRows.push(makeBonusRow());
+    allRows.push(makeHistRow(row));
+    lastWk = wk;
+  });
+  if (lastWk && bonusWeeks.has(lastWk)) allRows.push(makeBonusRow());
+
+  const visibleRows = allRows.slice(0, SHOW_INIT).join('');
+  const hiddenRows  = allRows.slice(SHOW_INIT).join('');
   const moreBtn     = hiddenRows
     ? `<button class="sync-btn" style="margin-top:8px" onclick="
         document.getElementById('histMore').style.display='block';
@@ -765,6 +841,7 @@ function renderProfile(d) {
         <div class="profile-stat"><div class="profile-stat-val">${d.totalDays || 0}</div><div class="profile-stat-lbl">Dias ativos</div></div>
         <div class="profile-stat"><div class="profile-stat-val">#${d.rank || '—'}</div><div class="profile-stat-lbl">Posição</div></div>
       </div>
+      ${bonusWeeks.size > 0 ? `<div class="bonus-breakdown">Atividades: ${(d.totalPoints||0) - bonusWeeks.size*3} pts + <span>Bônus: ${bonusWeeks.size*3} pts (${bonusWeeks.size}× semana completa)</span></div>` : ''}
     </div>
     <p class="section-title">Histórico de atividades</p>
     ${histHTML}
