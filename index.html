@@ -361,6 +361,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--g50);color:var(--gray900)
       <div class="bonus-locked-msg">🔒 Bônus bloqueado — em breve</div>
       <p style="font-size:13px;color:#1a4d88;margin-bottom:10px;line-height:1.5">Faça atividade física (funcional ou academia) em 5 dias na semana e ganhe +3 pts extras!</p>
       <div class="bonus-days" id="bonusDays"></div>
+      <div id="bonusCounter" style="font-size:12px;font-weight:700;color:var(--b400);margin-top:8px"></div>
     </div>
   </div>
 
@@ -623,12 +624,14 @@ function renderBonusDaysLocal() {
   const labels = ['S', 'T', 'Q', 'Q', 'S', 'S', 'D'];
   el.innerHTML = weekDatesCache.map((date, i) => {
     const gymDone = weekPresenceCache[date] || (date === TODAY && !!todayState.gym);
-    const cls     = date === TODAY ? 'today-dot' + (gymDone ? ' done' : '') : (gymDone ? 'done' : '');
-    return `<div class="day-dot ${cls}">${labels[i]}</div>`;
+    return `<div class="day-dot ${gymDone ? 'done' : ''}">${labels[i]}</div>`;
   }).join('');
   const completedPrev = weekDatesCache.filter(d => d !== TODAY && weekPresenceCache[d]).length;
   const todayDone     = !!todayState.gym;
-  document.getElementById('todayBonus').style.display = (completedPrev + (todayDone ? 1 : 0)) >= 5 ? 'block' : 'none';
+  const total         = completedPrev + (todayDone ? 1 : 0);
+  document.getElementById('todayBonus').style.display = total >= 5 ? 'block' : 'none';
+  const counter = document.getElementById('bonusCounter');
+  counter.textContent = total >= 5 ? '✅ Meta atingida! Bônus garantido.' : `${total}/5 dias concluídos`;
 }
 
 // ── LOCKS ─────────────────────────────────────────────
