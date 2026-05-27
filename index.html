@@ -4,6 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>Desafio Saúde 🌿</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#1a4d32">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Desafio Saúde">
+<link rel="apple-touch-icon" href="icon.svg">
 <style>
 @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@400;500;600&display=swap');
 :root{
@@ -235,6 +241,17 @@ body{font-family:'DM Sans',sans-serif;background:var(--g50);color:var(--gray900)
 .acts-val-gym{font-weight:700;color:var(--g600);}
 .acts-val-food{font-weight:700;color:var(--a400);}
 .acts-sub{color:var(--gray400);}
+
+/* ── PWA INSTALL BANNER ── */
+.pwa-banner{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);width:calc(100% - 32px);max-width:398px;background:var(--g900);border-radius:var(--rlg);padding:14px 15px;display:flex;align-items:center;gap:12px;z-index:500;box-shadow:0 4px 28px rgba(0,0,0,.3);animation:pwaSlideUp .35s ease;}
+@keyframes pwaSlideUp{from{transform:translateX(-50%) translateY(16px);opacity:0}to{transform:translateX(-50%) translateY(0);opacity:1}}
+.pwa-ico{font-size:26px;flex-shrink:0;}
+.pwa-info{flex:1;min-width:0;}
+.pwa-title{font-size:13px;font-weight:700;color:white;margin-bottom:2px;}
+.pwa-sub{font-size:11px;color:var(--g200);line-height:1.45;}
+.pwa-btns{display:flex;align-items:center;gap:8px;flex-shrink:0;}
+.pwa-install{background:var(--g400);color:white;border:none;border-radius:8px;padding:9px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;}
+.pwa-dismiss{background:none;border:none;color:rgba(255,255,255,.35);font-size:20px;cursor:pointer;padding:4px;line-height:1;}
 </style>
 </head>
 <body>
@@ -431,6 +448,31 @@ body{font-family:'DM Sans',sans-serif;background:var(--g50);color:var(--gray900)
 </div>
 
 <div class="toast" id="toast"></div>
+
+<!-- Banner Android/Chrome -->
+<div id="pwaBannerAndroid" class="pwa-banner" style="display:none">
+  <div class="pwa-ico">🌿</div>
+  <div class="pwa-info">
+    <div class="pwa-title">Instalar Desafio Saúde</div>
+    <div class="pwa-sub">Adicione à tela inicial para acesso rápido</div>
+  </div>
+  <div class="pwa-btns">
+    <button class="pwa-install" onclick="installPWA()">Instalar</button>
+    <button class="pwa-dismiss" onclick="dismissPWA()" aria-label="Fechar">✕</button>
+  </div>
+</div>
+
+<!-- Banner iOS/Safari -->
+<div id="pwaBannerIOS" class="pwa-banner" style="display:none">
+  <div class="pwa-ico">🌿</div>
+  <div class="pwa-info">
+    <div class="pwa-title">Adicionar à Tela de Início</div>
+    <div class="pwa-sub">Toque em <strong style="color:white">Compartilhar ↑</strong> e depois em <strong style="color:white">"Adicionar à Tela de Início"</strong></div>
+  </div>
+  <div class="pwa-btns">
+    <button class="pwa-dismiss" onclick="dismissPWA()" aria-label="Fechar">✕</button>
+  </div>
+</div>
 
 <script>
 // ════════════════════════════════════
@@ -1197,6 +1239,49 @@ async function doAdminResetPass(idx) {
       toast(`✓ Senha de ${name} resetada!`);
     } else { toast('⚠️ ' + (r.error || 'Erro ao resetar.'), true); }
   } catch(e) { toast('⚠️ Sem conexão.', true); }
+}
+
+// ── PWA ──────────────────────────────────────────────
+let _deferredPrompt = null;
+
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').catch(() => {});
+}
+
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  _deferredPrompt = e;
+  if (!localStorage.getItem('pwa_dismissed') &&
+      !window.matchMedia('(display-mode: standalone)').matches) {
+    setTimeout(() => {
+      document.getElementById('pwaBannerAndroid').style.display = 'flex';
+    }, 2500);
+  }
+});
+
+(function detectIOS() {
+  const isIOS       = /iphone|ipad|ipod/i.test(navigator.userAgent) && !window.MSStream;
+  const isStandalone = window.navigator.standalone;
+  if (isIOS && !isStandalone && !localStorage.getItem('pwa_dismissed')) {
+    setTimeout(() => {
+      document.getElementById('pwaBannerIOS').style.display = 'flex';
+    }, 2500);
+  }
+})();
+
+function dismissPWA() {
+  document.getElementById('pwaBannerAndroid').style.display = 'none';
+  document.getElementById('pwaBannerIOS').style.display     = 'none';
+  localStorage.setItem('pwa_dismissed', '1');
+}
+
+async function installPWA() {
+  if (!_deferredPrompt) return;
+  _deferredPrompt.prompt();
+  const { outcome } = await _deferredPrompt.userChoice;
+  _deferredPrompt   = null;
+  document.getElementById('pwaBannerAndroid').style.display = 'none';
+  localStorage.setItem('pwa_dismissed', '1');
 }
 
 init();
