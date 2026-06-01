@@ -155,10 +155,12 @@ function getLocks() {
       if (rows[i][0]) cfg[rows[i][0].toString()] = rows[i][1].toString();
     }
   }
+  const todayStr = Utilities.formatDate(new Date(), 'America/Sao_Paulo', 'yyyy-MM-dd');
   return {
     cardio: cfg.lock_cardio === '1',
     gym:    cfg.lock_gym    === '1',
-    food:   cfg.lock_food   === '1',
+    // Desafio alimentar vale só de segunda a sexta: trava sozinho no fim de semana.
+    food:   cfg.lock_food   === '1' || isWeekend(todayStr),
     bonus:  cfg.lock_bonus  === '1',
   };
 }
@@ -195,7 +197,7 @@ function getInitData(p) {
   const locks = {
     cardio: configData.lock_cardio === '1',
     gym:    configData.lock_gym    === '1',
-    food:   configData.lock_food   === '1',
+    food:   configData.lock_food   === '1' || isWeekend(p.date),
     bonus:  configData.lock_bonus  === '1',
   };
 
@@ -210,6 +212,9 @@ function saveActivity(d) {
   if (!validateToken(d.name, d.token)) return json({ auth: false });
 
   if (!d.remove) {
+    if (d.activity === 'food' && isWeekend(d.date)) {
+      return json({ success: false, locked: true, error: 'O desafio alimentar vale só de segunda a sexta. 🥗' });
+    }
     const locks = getLocks();
     if (locks[d.activity]) return json({ success: false, locked: true, error: 'Atividade bloqueada pelo administrador.' });
   }
@@ -400,7 +405,8 @@ function buildScores(rows, locks) {
   rows.slice(1).forEach(r => {
     const name = r[1], act = r[2], date = normalizeDate(r[3]);
     if (!name || !act || !date) return;
-    if (locks[act]) return;
+    // Bloqueio NÃO apaga pontos já registrados — só impede novos registros (ver saveActivity).
+    // Por isso a pontuação histórica nunca é filtrada por locks[act] aqui.
     const dedupeKey = `${name.toString().toLowerCase()}|${act}|${date}`;
     if (seen.has(dedupeKey)) return;
     seen.add(dedupeKey);
@@ -444,6 +450,14 @@ function getCurrentWeekDates() {
     d.setDate(today.getDate() - (dow - (i + 1)));
     return Utilities.formatDate(d, tz, 'yyyy-MM-dd');
   });
+}
+
+// Sábado (6) ou domingo (0) — usado para travar o desafio alimentar fora de seg–sex.
+// dateStr no formato 'yyyy-MM-dd' (já no fuso de Brasília); meio-dia evita problemas com DST.
+function isWeekend(dateStr) {
+  if (!dateStr) return false;
+  const dow = new Date(dateStr + 'T12:00:00').getDay();
+  return dow === 0 || dow === 6;
 }
 
 function weekKey(date) {

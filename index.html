@@ -722,6 +722,12 @@ function renderLocks() {
   Object.entries(actMap).forEach(([act, id]) => {
     document.getElementById(id).classList.toggle('locked', !!locksState[act]);
   });
+  // Desafio alimentar trava sozinho no fim de semana — mensagem específica nesse caso
+  const foodBadge = document.querySelector('#actFood .act-lock-badge');
+  if (foodBadge) {
+    const dow = new Date(TODAY + 'T12:00:00').getDay();
+    foodBadge.textContent = (dow === 0 || dow === 6) ? '🔒 Só de seg a sex' : '🔒 Em breve';
+  }
   document.querySelector('.bonus-card').classList.toggle('locked', !!locksState.bonus);
 }
 
