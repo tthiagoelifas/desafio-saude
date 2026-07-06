@@ -76,7 +76,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--g50);color:var(--gray900)
 .today-acts{font-size:13px;color:rgba(255,255,255,.65);margin-top:3px;}
 .today-bonus{font-size:11px;color:var(--a400);margin-top:3px;font-weight:600;display:none;}
 .section-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--gray400);margin-bottom:10px;}
-.act-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:18px;}
+.act-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:18px;}
 .act-card{background:white;border-radius:var(--rlg);border:1.5px solid var(--gray100);padding:13px 10px;cursor:pointer;transition:.2s;user-select:none;position:relative;min-height:100px;display:flex;flex-direction:column;justify-content:flex-start;}
 .act-card:active{transform:scale(.96);}
 .act-card.done{border-color:var(--g400);border-width:2px;background:var(--g50);}
@@ -156,6 +156,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--g50);color:var(--gray900)
 .hist-chip.cardio{background:var(--b100);color:var(--b400);}
 .hist-chip.gym{background:var(--g100);color:var(--g600);}
 .hist-chip.food{background:var(--a100);color:var(--a400);}
+.hist-chip.sleep{background:#ede9fe;color:#7c3aed;}
 .hist-pts{font-size:13px;font-weight:700;color:var(--g600);flex-shrink:0;}
 
 /* ── ADMIN ── */
@@ -240,7 +241,9 @@ body{font-family:'DM Sans',sans-serif;background:var(--g50);color:var(--gray900)
 .acts-val-cardio{font-weight:700;color:var(--b400);}
 .acts-val-gym{font-weight:700;color:var(--g600);}
 .acts-val-food{font-weight:700;color:var(--a400);}
+.acts-val-sleep{font-weight:700;color:#7c3aed;}
 .acts-sub{color:var(--gray400);}
+.mini-acts-grid{grid-template-columns:1fr 1fr !important;}
 
 /* ── PWA INSTALL BANNER ── */
 .pwa-banner{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);width:calc(100% - 32px);max-width:398px;background:var(--g900);border-radius:var(--rlg);padding:14px 15px;display:flex;align-items:center;gap:12px;z-index:500;box-shadow:0 4px 28px rgba(0,0,0,.3);animation:pwaSlideUp .35s ease;}
@@ -252,6 +255,38 @@ body{font-family:'DM Sans',sans-serif;background:var(--g50);color:var(--gray900)
 .pwa-btns{display:flex;align-items:center;gap:8px;flex-shrink:0;}
 .pwa-install{background:var(--g400);color:white;border:none;border-radius:8px;padding:9px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;}
 .pwa-dismiss{background:none;border:none;color:rgba(255,255,255,.35);font-size:20px;cursor:pointer;padding:4px;line-height:1;}
+
+/* ── SONO CARD ── */
+.act-card.act-sleep.done{border-color:#a78bfa;border-width:2px;background:#faf8ff;}
+.act-card.act-sleep.done::after{background:#7c3aed;}
+.act-card.act-sleep.done .act-name{color:#7c3aed;}
+.act-card.act-sleep.done .act-done-label{color:#7c3aed;}
+
+/* ── RECOMENDAÇÕES ── */
+.rec-section{margin-bottom:16px;}
+.rec-week-header{display:flex;align-items:center;gap:8px;margin-bottom:10px;}
+.rec-week-name{font-size:13px;font-weight:700;color:var(--g800);flex:1;}
+.rec-card{background:white;border-radius:var(--rlg);border:1.5px solid var(--gray100);margin-bottom:7px;overflow:hidden;}
+.rec-card.open{border-color:var(--gray200);}
+.rec-header{display:flex;align-items:center;gap:10px;padding:12px 14px;cursor:pointer;user-select:none;}
+.rec-icon{font-size:18px;flex-shrink:0;}
+.rec-title{flex:1;font-size:12px;font-weight:700;}
+.rec-arrow{font-size:10px;color:var(--gray400);transition:transform .2s;}
+.rec-card.open .rec-arrow{transform:rotate(180deg);}
+.rec-body{display:none;padding:12px 14px;font-size:12px;color:var(--gray700);line-height:1.7;white-space:pre-line;}
+.rec-card.open .rec-body{display:block;}
+.rec-card.rec-cardio .rec-header{background:var(--b100);border-bottom:1px solid transparent;}
+.rec-card.rec-cardio.open .rec-header{border-bottom-color:#c5dff5;}
+.rec-card.rec-cardio .rec-title{color:var(--b400);}
+.rec-card.rec-treino .rec-header{background:var(--g50);border-bottom:1px solid transparent;}
+.rec-card.rec-treino.open .rec-header{border-bottom-color:var(--g100);}
+.rec-card.rec-treino .rec-title{color:var(--g600);}
+.rec-card.rec-alim .rec-header{background:var(--a100);border-bottom:1px solid transparent;}
+.rec-card.rec-alim.open .rec-header{border-bottom-color:#f0d088;}
+.rec-card.rec-alim .rec-title{color:#a06010;}
+.rec-card.rec-sono .rec-header{background:#ede9fe;border-bottom:1px solid transparent;}
+.rec-card.rec-sono.open .rec-header{border-bottom-color:#d0c4f8;}
+.rec-card.rec-sono .rec-title{color:#7c3aed;}
 </style>
 </head>
 <body>
@@ -334,6 +369,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--g50);color:var(--gray900)
         <span class="act-pill" id="pillCardio">🏃</span>
         <span class="act-pill" id="pillGym">🏋️</span>
         <span class="act-pill" id="pillFood">🥗</span>
+        <span class="act-pill" id="pillSleep">😴</span>
       </div>
     </div>
     <h1 class="header-title">Bora treinar!</h1>
@@ -386,6 +422,36 @@ body{font-family:'DM Sans',sans-serif;background:var(--g50);color:var(--gray900)
         <span class="act-done-label">Feito hoje!</span>
         <span class="act-lock-badge">🔒 Em breve</span>
       </div>
+      <div class="act-card act-sleep" id="actSleep" onclick="toggleActivity('sleep')">
+        <span class="act-emoji">😴</span>
+        <span class="act-name">Sono</span>
+        <span class="act-pts">7–9h de sono · +1 pt</span>
+        <span class="act-done-label">Dormiu bem!</span>
+        <span class="act-lock-badge">🔒 Em breve</span>
+      </div>
+    </div>
+
+    <div id="recSection" style="display:none">
+      <div class="rec-week-header">
+        <span class="section-title" style="margin:0">Recomendações</span>
+        <span id="recTituloEl" class="rec-week-name"></span>
+      </div>
+      <div id="recCardioCard" class="rec-card rec-cardio" onclick="toggleRec('recCardioCard')">
+        <div class="rec-header"><span class="rec-icon">🚴</span><span class="rec-title">Bloco Cardio</span><span class="rec-arrow">▼</span></div>
+        <div class="rec-body" id="recCardioBody"></div>
+      </div>
+      <div id="recTreinoCard" class="rec-card rec-treino" onclick="toggleRec('recTreinoCard')">
+        <div class="rec-header"><span class="rec-icon">🏋️</span><span class="rec-title">Bloco Treino</span><span class="rec-arrow">▼</span></div>
+        <div class="rec-body" id="recTreinoBody"></div>
+      </div>
+      <div id="recAlimCard" class="rec-card rec-alim" onclick="toggleRec('recAlimCard')">
+        <div class="rec-header"><span class="rec-icon">🥗</span><span class="rec-title">Bloco Alimentação</span><span class="rec-arrow">▼</span></div>
+        <div class="rec-body" id="recAlimBody"></div>
+      </div>
+      <div id="recSonoCard" class="rec-card rec-sono" onclick="toggleRec('recSonoCard')">
+        <div class="rec-header"><span class="rec-icon">😴</span><span class="rec-title">Bloco Sono</span><span class="rec-arrow">▼</span></div>
+        <div class="rec-body" id="recSonoBody"></div>
+      </div>
     </div>
 
     <div class="bonus-card">
@@ -404,6 +470,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--g50);color:var(--gray900)
       <button class="filter-btn" onclick="setRankingFilter('cardio',this)">🏃 Cardio</button>
       <button class="filter-btn" onclick="setRankingFilter('gym',this)">🏋️ Func./Academia</button>
       <button class="filter-btn" onclick="setRankingFilter('food',this)">🥗 Alimentação</button>
+      <button class="filter-btn" onclick="setRankingFilter('sleep',this)">😴 Sono</button>
     </div>
     <button class="sync-btn" onclick="loadRanking()">🔄 Atualizar</button>
     <div id="rankingList"><div class="loading"><div class="spinner"></div>Carregando...</div></div>
@@ -439,6 +506,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--g50);color:var(--gray900)
       <button class="filter-btn" onclick="showAdminTab('cardio',this)">🏃 Cardio</button>
       <button class="filter-btn" onclick="showAdminTab('gym',this)">🏋️ Func./Academia</button>
       <button class="filter-btn" onclick="showAdminTab('food',this)">🥗 Alimentação</button>
+      <button class="filter-btn" onclick="showAdminTab('sleep',this)">😴 Sono</button>
       <button class="filter-btn" onclick="showAdminTab('presenca',this)">📅 Presença</button>
       <button class="filter-btn" onclick="showAdminTab('desafio',this)">🍎 Desafio</button>
       <button class="filter-btn" onclick="showAdminTab('usuarios',this)">👥 Usuários</button>
@@ -642,6 +710,7 @@ async function loadInitData() {
     todayState        = r.activities || {};
     weekPresenceCache = r.presence   || {};
     locksState        = r.locks      || {};
+    renderRecs(r);
   } catch(e) {
     toast('⚠️ Erro ao carregar dados', true);
     todayState        = {};
@@ -655,23 +724,25 @@ async function loadInitData() {
 }
 
 function setCardsLoading(on) {
-  ['actCardio', 'actGym', 'actFood'].forEach(id => document.getElementById(id).classList.toggle('loading-state', on));
+  ['actCardio', 'actGym', 'actFood', 'actSleep'].forEach(id => document.getElementById(id).classList.toggle('loading-state', on));
 }
 
 // ── RENDER TODAY ──────────────────────────────────────
 function renderToday() {
   const s   = todayState;
-  const pts = (s.cardio ? 1 : 0) + (s.gym ? 1 : 0) + (s.food ? 1 : 0);
+  const pts = (s.cardio ? 1 : 0) + (s.gym ? 1 : 0) + (s.food ? 1 : 0) + (s.sleep ? 1 : 0);
 
   document.getElementById('actCardio').classList.toggle('done', !!s.cardio);
   document.getElementById('actGym').classList.toggle('done',    !!s.gym);
   document.getElementById('actFood').classList.toggle('done',   !!s.food);
+  document.getElementById('actSleep').classList.toggle('done',  !!s.sleep);
   document.getElementById('pillCardio').classList.toggle('done', !!s.cardio);
   document.getElementById('pillGym').classList.toggle('done',   !!s.gym);
   document.getElementById('pillFood').classList.toggle('done',  !!s.food);
+  document.getElementById('pillSleep').classList.toggle('done', !!s.sleep);
 
   document.getElementById('todayPts').textContent = pts;
-  const done = [s.cardio && 'cardio', s.gym && 'funcional', s.food && 'alimentação'].filter(Boolean);
+  const done = [s.cardio && 'cardio', s.gym && 'funcional', s.food && 'alimentação', s.sleep && 'sono'].filter(Boolean);
   document.getElementById('todayActs').textContent = done.length ? '✓ ' + done.join(' · ') : 'Nenhuma atividade ainda';
 }
 
@@ -718,7 +789,7 @@ function renderBonusDaysLocal() {
 
 // ── LOCKS ─────────────────────────────────────────────
 function renderLocks() {
-  const actMap = { cardio: 'actCardio', gym: 'actGym', food: 'actFood' };
+  const actMap = { cardio: 'actCardio', gym: 'actGym', food: 'actFood', sleep: 'actSleep' };
   Object.entries(actMap).forEach(([act, id]) => {
     document.getElementById(id).classList.toggle('locked', !!locksState[act]);
   });
@@ -748,7 +819,7 @@ async function toggleActivity(type) {
     if (r.auth === false) { doLogout(); return; }
     if (r.success) {
       if (!wasDone) {
-        const msgs = { cardio: '🏃 Cardio registrado!', gym: '🏋️ Atividade registrada!', food: '🥗 Alimentação registrada!' };
+        const msgs = { cardio: '🏃 Cardio registrado!', gym: '🏋️ Atividade registrada!', food: '🥗 Alimentação registrada!', sleep: '😴 Sono registrado!' };
         toast(msgs[type]);
       }
     } else {
@@ -787,7 +858,7 @@ function setRankingFilter(type, btn) {
 }
 
 function renderRankingByFilter() {
-  const keyMap = { geral: 'ranking', cardio: 'cardioRanking', gym: 'gymRanking', food: 'foodRanking' };
+  const keyMap = { geral: 'ranking', cardio: 'cardioRanking', gym: 'gymRanking', food: 'foodRanking', sleep: 'sleepRanking' };
   const data   = rankingData[keyMap[rankingFilter]] || [];
   renderRanking(rankingFilter === 'geral' ? data : data.slice(0, 10));
 }
@@ -825,7 +896,7 @@ function renderProfile(d) {
   const ini       = esc(session.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase());
   const history   = d.history || [];
   const SHOW_INIT = 14;
-  const actLabels = { cardio: '🏃 Cardio', gym: '🏋️ Func./Academia', food: '🥗 Alimentação' };
+  const actLabels = { cardio: '🏃 Cardio', gym: '🏋️ Func./Academia', food: '🥗 Alimentação', sleep: '😴 Sono' };
 
   const makeHistRow = row => {
     const chips = (row.activities || []).map(a => `<span class="hist-chip ${esc(a)}">${esc(actLabels[a] || a)}</span>`).join('');
@@ -1015,8 +1086,8 @@ function renderAdminTab(tab) {
     return;
   }
 
-  const keyMap = { geral: 'ranking', cardio: 'cardioRanking', gym: 'gymRanking', food: 'foodRanking' };
-  const lblMap = { geral: '🏆 Top 10 Geral', cardio: '🏃 Top Cardio', gym: '🏋️ Top Funcional', food: '🥗 Top Alimentação' };
+  const keyMap = { geral: 'ranking', cardio: 'cardioRanking', gym: 'gymRanking', food: 'foodRanking', sleep: 'sleepRanking' };
+  const lblMap = { geral: '🏆 Top 10 Geral', cardio: '🏃 Top Cardio', gym: '🏋️ Top Funcional', food: '🥗 Top Alimentação', sleep: '😴 Top Sono' };
   const data   = (adminData[keyMap[tab]] || []).slice(0, 10);
   const rows   = data.map((p, i) => {
     const ini = esc(p.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase());
@@ -1081,6 +1152,36 @@ function toast(msg, isErr) {
   setTimeout(() => t.classList.remove('show'), 2500);
 }
 
+// ── RECOMENDAÇÕES ─────────────────────────────────────
+function toggleRec(id) {
+  document.getElementById(id).classList.toggle('open');
+}
+
+function renderRecs(r) {
+  const titulo = r.rec_titulo        || '';
+  const cardio = r.rec_cardio        || '';
+  const treino = r.rec_treino        || '';
+  const alim   = r.rec_alimentacao   || '';
+  const sono   = r.rec_sono          || '';
+
+  const section = document.getElementById('recSection');
+  const hasAny  = cardio || treino || alim || sono;
+  section.style.display = hasAny ? 'block' : 'none';
+  if (!hasAny) return;
+
+  document.getElementById('recTituloEl').textContent = titulo;
+
+  const showCard = (cardId, bodyId, content) => {
+    const card = document.getElementById(cardId);
+    card.style.display = content ? '' : 'none';
+    if (content) document.getElementById(bodyId).textContent = content;
+  };
+  showCard('recCardioCard', 'recCardioBody', cardio);
+  showCard('recTreinoCard', 'recTreinoBody', treino);
+  showCard('recAlimCard',   'recAlimBody',   alim);
+  showCard('recSonoCard',   'recSonoBody',   sono);
+}
+
 // ── ADMIN DESAFIO ─────────────────────────────────────
 async function renderAdminDesafio(el) {
   el.innerHTML = '<div class="loading"><div class="spinner"></div>Carregando...</div>';
@@ -1092,6 +1193,7 @@ async function renderAdminDesafio(el) {
       { key: 'lock_cardio', label: '🏃 Cardio' },
       { key: 'lock_gym',    label: '🏋️ Atividade Física' },
       { key: 'lock_food',   label: '🥗 Alimentação' },
+      { key: 'lock_sleep',  label: '😴 Sono' },
       { key: 'lock_bonus',  label: '⭐ Bônus +3' },
     ];
     const lockRows = lockItems.map(item => {
@@ -1104,6 +1206,12 @@ async function renderAdminDesafio(el) {
       </div>`;
     }).join('');
 
+    const recTitulo = esc(r.rec_titulo || '');
+    const recCardio = esc(r.rec_cardio || '');
+    const recTreino = esc(r.rec_treino || '');
+    const recAlim   = esc(r.rec_alimentacao || '');
+    const recSono   = esc(r.rec_sono || '');
+
     el.innerHTML = `
       <p class="section-title">Desafio alimentar da semana</p>
       <div class="card-section" style="margin-bottom:20px">
@@ -1111,6 +1219,21 @@ async function renderAdminDesafio(el) {
         <textarea id="desafioText" class="field" rows="4" style="resize:vertical;height:auto">${current}</textarea>
         <div class="err-msg" id="desafioErr"></div>
         <button class="btn" id="saveDesafioBtn" onclick="saveDesafio()">Salvar</button>
+      </div>
+      <p class="section-title">Recomendações da semana (opcional)</p>
+      <div class="card-section" style="margin-bottom:20px">
+        <label class="field-label" for="rec_tituloText">Título do tema (ex: ⚡ Semana Haaland)</label>
+        <input type="text" id="rec_tituloText" class="field" value="${recTitulo}" placeholder="Ex: ⚡ Semana Haaland">
+        <label class="field-label" for="rec_cardioText">🚴 Bloco Cardio (vazio = oculto)</label>
+        <textarea id="rec_cardioText" class="field" rows="4" style="resize:vertical;height:auto" placeholder="Descreva o treino de cardio...">${recCardio}</textarea>
+        <label class="field-label" for="rec_treinoText">🏋️ Bloco Treino (vazio = oculto)</label>
+        <textarea id="rec_treinoText" class="field" rows="6" style="resize:vertical;height:auto" placeholder="Descreva os treinos da semana...">${recTreino}</textarea>
+        <label class="field-label" for="rec_alimentacaoText">🥗 Bloco Alimentação (vazio = oculto)</label>
+        <textarea id="rec_alimentacaoText" class="field" rows="4" style="resize:vertical;height:auto" placeholder="Descreva as orientações de alimentação...">${recAlim}</textarea>
+        <label class="field-label" for="rec_sonoText">😴 Bloco Sono (vazio = oculto)</label>
+        <textarea id="rec_sonoText" class="field" rows="3" style="resize:vertical;height:auto" placeholder="Descreva as orientações de sono...">${recSono}</textarea>
+        <div class="err-msg" id="recsErr"></div>
+        <button class="btn" id="saveRecsBtn" onclick="saveRecs()">Salvar recomendações</button>
       </div>
       <p class="section-title">Controle de atividades</p>
       <div class="card-section" style="padding:0 16px">
@@ -1138,6 +1261,30 @@ async function toggleLock(key) {
     } else { toast('⚠️ Erro ao alterar.', true); }
   } catch(e) { toast('⚠️ Sem conexão.', true); }
   btn.disabled = false;
+}
+
+async function saveRecs() {
+  const btn = document.getElementById('saveRecsBtn');
+  const err = document.getElementById('recsErr');
+  err.classList.remove('show');
+  btn.disabled = true; btn.textContent = 'Salvando...';
+  const fields = [
+    { key: 'rec_titulo',      id: 'rec_tituloText' },
+    { key: 'rec_cardio',      id: 'rec_cardioText' },
+    { key: 'rec_treino',      id: 'rec_treinoText' },
+    { key: 'rec_alimentacao', id: 'rec_alimentacaoText' },
+    { key: 'rec_sono',        id: 'rec_sonoText' },
+  ];
+  try {
+    for (const f of fields) {
+      const el = document.getElementById(f.id);
+      if (!el) continue;
+      const r = await apiPost({ action: 'adminSetConfig', adminToken, key: f.key, value: el.value.trim() });
+      if (r.auth === false) { show('adminLoginScreen'); return; }
+    }
+    toast('✓ Recomendações atualizadas!');
+  } catch(e) { err.textContent = 'Sem conexão.'; err.classList.add('show'); }
+  btn.disabled = false; btn.textContent = 'Salvar recomendações';
 }
 
 async function saveDesafio() {
@@ -1198,7 +1345,7 @@ async function toggleUserProfile(idx) {
   try {
     const r = await apiFetch(`?action=adminGetProfile&name=${enc(name)}&adminToken=${enc(adminToken || '')}`);
     if (r.auth === false) { show('adminLoginScreen'); return; }
-    const actLabels = { cardio: '🏃 Cardio', gym: '🏋️ Func./Academia', food: '🥗 Alimentação' };
+    const actLabels = { cardio: '🏃 Cardio', gym: '🏋️ Func./Academia', food: '🥗 Alimentação', sleep: '😴 Sono' };
     const history   = (r.history || []).slice(0, 10).map(row => {
       const chips = (row.activities || []).map(a => `<span class="hist-chip ${esc(a)}">${esc(actLabels[a] || a)}</span>`).join('');
       return `<div class="hist-row"><div class="hist-date">${fmtDate(row.date)}</div><div class="hist-acts">${chips}</div><div class="hist-pts">+${row.points}</div></div>`;
@@ -1214,6 +1361,7 @@ async function toggleUserProfile(idx) {
           <div><div class="acts-val-cardio">${r.cardioCount||0}</div><div class="acts-sub">🏃 Cardios</div></div>
           <div><div class="acts-val-gym">${r.gymCount||0}</div><div class="acts-sub">🏋️ Treinos</div></div>
           <div><div class="acts-val-food">${r.foodCount||0}</div><div class="acts-sub">🥗 Aliment.</div></div>
+          <div><div class="acts-val-sleep">${r.sleepCount||0}</div><div class="acts-sub">😴 Sono</div></div>
         </div>
         <p class="section-title" style="margin-bottom:4px">Últimos 10 dias</p>
         ${history || '<p style="font-size:13px;color:var(--gray400);padding:8px 0">Sem atividades registradas.</p>'}

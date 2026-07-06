@@ -161,6 +161,7 @@ function getLocks() {
     gym:    cfg.lock_gym    === '1',
     // Desafio alimentar vale só de segunda a sexta: trava sozinho no fim de semana.
     food:   cfg.lock_food   === '1' || isWeekend(todayStr),
+    sleep:  cfg.lock_sleep  === '1',
     bonus:  cfg.lock_bonus  === '1',
   };
 }
@@ -198,10 +199,21 @@ function getInitData(p) {
     cardio: configData.lock_cardio === '1',
     gym:    configData.lock_gym    === '1',
     food:   configData.lock_food   === '1' || isWeekend(p.date),
+    sleep:  configData.lock_sleep  === '1',
     bonus:  configData.lock_bonus  === '1',
   };
 
-  return json({ desafio_alimentar: configData.desafio_alimentar || '', activities, presence, locks });
+  return json({
+    desafio_alimentar: configData.desafio_alimentar || '',
+    activities,
+    presence,
+    locks,
+    rec_titulo:      configData.rec_titulo      || '',
+    rec_cardio:      configData.rec_cardio      || '',
+    rec_treino:      configData.rec_treino       || '',
+    rec_alimentacao: configData.rec_alimentacao  || '',
+    rec_sono:        configData.rec_sono         || '',
+  });
 }
 
 // ══════════════════════════════════════════════════════
@@ -321,7 +333,8 @@ function getRanking() {
     ranking:       toRankingArray(scores, 'total'),
     cardioRanking: toRankingArray(scores, 'cardio'),
     gymRanking:    toRankingArray(scores, 'gym'),
-    foodRanking:   toRankingArray(scores, 'food')
+    foodRanking:   toRankingArray(scores, 'food'),
+    sleepRanking:  toRankingArray(scores, 'sleep'),
   };
   cache.put('ranking', JSON.stringify(data), 300);
   return json(data);
@@ -381,6 +394,7 @@ function getAdminDashboard(adminToken) {
     cardioRanking:     toRankingArray(scores, 'cardio'),
     gymRanking:        toRankingArray(scores, 'gym'),
     foodRanking:       toRankingArray(scores, 'food'),
+    sleepRanking:      toRankingArray(scores, 'sleep'),
     weekPresence,
     userList
   });
@@ -410,7 +424,7 @@ function buildScores(rows, locks) {
     const dedupeKey = `${name.toString().toLowerCase()}|${act}|${date}`;
     if (seen.has(dedupeKey)) return;
     seen.add(dedupeKey);
-    if (!map[name]) map[name] = { total: 0, cardio: 0, gym: 0, food: 0, actCount: 0, weekDays: {} };
+    if (!map[name]) map[name] = { total: 0, cardio: 0, gym: 0, food: 0, sleep: 0, actCount: 0, weekDays: {} };
     map[name][act]      = (map[name][act] || 0) + 1;
     map[name].total    += 1;
     map[name].actCount += 1;
@@ -588,6 +602,7 @@ function adminGetUserProfile(params) {
     cardioCount: myScore.cardio || 0,
     gymCount:    myScore.gym    || 0,
     foodCount:   myScore.food   || 0,
+    sleepCount:  myScore.sleep  || 0,
     rank,
     history
   });
