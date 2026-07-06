@@ -125,6 +125,12 @@ body{font-family:'DM Sans',sans-serif;background:var(--g50);color:var(--gray900)
 .bonus-celebrate-pts{font-size:28px;font-weight:800;color:var(--g600);margin-bottom:20px;}
 @keyframes popIn{from{transform:scale(.8);opacity:0}to{transform:scale(1);opacity:1}}
 @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+/* ── MODAL CÓDIGO DE RECUPERAÇÃO ── */
+.code-modal-box{background:white;border-radius:20px;padding:32px 28px;text-align:center;max-width:320px;width:90%;animation:popIn .3s;}
+.code-modal-emoji{font-size:44px;margin-bottom:8px;}
+.code-modal-title{font-family:'DM Serif Display',serif;font-size:20px;color:var(--g800);margin-bottom:8px;}
+.code-modal-sub{font-size:13px;color:var(--gray400);line-height:1.5;margin-bottom:16px;}
+.code-modal-code{font-family:monospace;font-size:26px;font-weight:800;letter-spacing:.15em;color:var(--g600);background:var(--g50);border:1px dashed var(--g200);border-radius:12px;padding:12px;margin-bottom:20px;}
 
 /* ── RANKING ── */
 .rank-list{display:flex;flex-direction:column;gap:9px;}
@@ -145,7 +151,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--g50);color:var(--gray900)
 .profile-av{width:64px;height:64px;border-radius:50%;background:var(--g400);display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:700;color:white;margin:0 auto 10px;}
 .profile-name{font-family:'DM Serif Display',serif;font-size:20px;color:white;margin-bottom:2px;}
 .profile-since{font-size:12px;color:rgba(255,255,255,.5);}
-.profile-stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:12px;}
+.profile-stats{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;margin-top:12px;}
 .profile-stat{background:rgba(255,255,255,.08);border-radius:var(--rmd);padding:10px 6px;text-align:center;}
 .profile-stat-val{font-size:20px;font-weight:700;color:white;}
 .profile-stat-lbl{font-size:10px;color:rgba(255,255,255,.5);margin-top:2px;}
@@ -319,6 +325,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--g50);color:var(--gray900)
       <button class="btn outline" onclick="show('welcomeScreen')">Voltar</button>
     </div>
     <p class="auth-switch" style="margin-top:14px">Não tem conta? <a onclick="show('registerScreen')">Criar agora</a></p>
+    <p class="auth-switch" style="margin-top:8px"><a onclick="show('forgotScreen')">Esqueci minha senha</a></p>
     <p class="auth-switch" style="margin-top:8px"><a onclick="show('adminLoginScreen')">Acesso admin</a></p>
   </div>
 </div>
@@ -341,6 +348,29 @@ body{font-family:'DM Sans',sans-serif;background:var(--g50);color:var(--gray900)
       <button class="btn outline" onclick="show('welcomeScreen')">Voltar</button>
     </div>
     <p class="auth-switch" style="margin-top:14px">Já tem conta? <a onclick="show('loginScreen')">Entrar</a></p>
+  </div>
+</div>
+
+<!-- ══ ESQUECI MINHA SENHA ══ -->
+<div id="forgotScreen" class="screen">
+  <div class="auth-wrap">
+    <div class="auth-icon">🔑</div>
+    <h1 class="auth-title">Recuperar senha</h1>
+    <p class="auth-sub">Informe o código de recuperação que você recebeu ao criar a conta.</p>
+    <div class="auth-form">
+      <div class="err-msg" id="forgotErr">Verifique os campos e tente novamente.</div>
+      <label class="field-label" for="forgotName">Nome de usuário</label>
+      <input type="text" id="forgotName" class="field" placeholder="Seu usuário..." autocomplete="username">
+      <label class="field-label" for="forgotCode">Código de recuperação</label>
+      <input type="text" id="forgotCode" class="field" placeholder="Ex: AB3D9F2K" autocomplete="off" style="text-transform:uppercase">
+      <label class="field-label" for="forgotPass">Nova senha</label>
+      <input type="password" id="forgotPass" class="field" placeholder="Mínimo 4 caracteres..." autocomplete="new-password">
+      <label class="field-label" for="forgotPass2">Confirmar nova senha</label>
+      <input type="password" id="forgotPass2" class="field" placeholder="Repita a senha..." autocomplete="new-password" onkeydown="if(event.key==='Enter')doForgotPassword()">
+      <button class="btn" id="forgotBtn" onclick="doForgotPassword()">Redefinir senha</button>
+      <button class="btn outline" onclick="show('loginScreen')">Voltar</button>
+    </div>
+    <p class="auth-switch" style="margin-top:14px">Perdeu o código também? Peça para o admin resetar sua senha.</p>
   </div>
 </div>
 
@@ -611,8 +641,8 @@ async function doRegister() {
       const storedName = r.storedName || name;
       session = { name: storedName, token: await sha256(storedName + hash) };
       localStorage.setItem('ds_session', JSON.stringify(session));
-      toast('🎉 Conta criada! Bem-vindo(a) ao desafio!');
-      showMain();
+      if (r.recoveryCode) showRecoveryCodeModal(r.recoveryCode);
+      else { toast('🎉 Conta criada! Bem-vindo(a) ao desafio!'); showMain(); }
     } else {
       err.textContent = r.error || 'Erro ao criar conta.';
       err.classList.add('show');
@@ -646,6 +676,39 @@ async function doLogin() {
     }
   } catch(e) { err.textContent = 'Sem conexão com o servidor.'; err.classList.add('show'); }
   btn.disabled = false; btn.textContent = 'Entrar';
+}
+
+// ── ESQUECI MINHA SENHA ───────────────────────────────
+async function doForgotPassword() {
+  const name  = document.getElementById('forgotName').value.trim();
+  const code  = document.getElementById('forgotCode').value.trim().toUpperCase();
+  const pass  = document.getElementById('forgotPass').value;
+  const pass2 = document.getElementById('forgotPass2').value;
+  const err   = document.getElementById('forgotErr');
+  const btn   = document.getElementById('forgotBtn');
+
+  err.classList.remove('show');
+  if (!name || !code || pass.length < 4) { err.textContent = 'Preencha todos os campos (senha com mín. 4 caracteres).'; err.classList.add('show'); return; }
+  if (pass !== pass2) { err.textContent = 'As senhas não conferem.'; err.classList.add('show'); return; }
+
+  btn.disabled = true; btn.textContent = 'Redefinindo...';
+  try {
+    const recoveryHash = await sha256(code);
+    const newPassHash  = await sha256(pass);
+    const r = await apiPost({ action: 'forgotPassword', name, recoveryHash, newPassHash });
+    if (r.success) {
+      toast('🔑 Senha redefinida! Faça login com a nova senha.');
+      document.getElementById('forgotName').value = '';
+      document.getElementById('forgotCode').value = '';
+      document.getElementById('forgotPass').value = '';
+      document.getElementById('forgotPass2').value = '';
+      show('loginScreen');
+    } else {
+      err.textContent = r.error || 'Não foi possível redefinir a senha.';
+      err.classList.add('show');
+    }
+  } catch(e) { err.textContent = 'Sem conexão com o servidor.'; err.classList.add('show'); }
+  btn.disabled = false; btn.textContent = 'Redefinir senha';
 }
 
 // ── LOGOUT ────────────────────────────────────────────
@@ -755,6 +818,22 @@ function weekKey(dateStr) {
   return d.getFullYear() + '-W' + String(wn).padStart(2, '0');
 }
 
+// ── STREAK (dias seguidos com pelo menos 1 atividade) ──
+// Conta a partir de hoje (ou de ontem, se hoje ainda não teve nenhuma atividade)
+// e retrocede enquanto houver dias consecutivos no histórico.
+function computeStreak(dates) {
+  const set = new Set(dates);
+  const cursor = new Date(TODAY + 'T12:00:00');
+  if (!set.has(TODAY)) cursor.setDate(cursor.getDate() - 1);
+
+  let streak = 0;
+  while (set.has(localDateStr(cursor))) {
+    streak++;
+    cursor.setDate(cursor.getDate() - 1);
+  }
+  return streak;
+}
+
 // ── CELEBRAÇÃO BÔNUS ──────────────────────────────────
 function showBonusCelebration() {
   const el = document.createElement('div');
@@ -769,6 +848,21 @@ function showBonusCelebration() {
     </div>`;
   document.body.appendChild(el);
   el.addEventListener('click', e => { if (e.target === el) el.remove(); });
+}
+
+// ── CÓDIGO DE RECUPERAÇÃO (exibido uma única vez no cadastro) ──
+function showRecoveryCodeModal(code) {
+  const el = document.createElement('div');
+  el.className = 'bonus-celebrate';
+  el.innerHTML = `
+    <div class="code-modal-box">
+      <div class="code-modal-emoji">🔑</div>
+      <div class="code-modal-title">Guarde seu código de recuperação</div>
+      <div class="code-modal-sub">Se você esquecer sua senha, vai precisar deste código para redefini-la. Anote em um lugar seguro — ele não será mostrado de novo.</div>
+      <div class="code-modal-code">${esc(code)}</div>
+      <button class="btn" style="margin:0" onclick="this.closest('.bonus-celebrate').remove(); toast('🎉 Conta criada! Bem-vindo(a) ao desafio!'); showMain();">Já anotei 💪</button>
+    </div>`;
+  document.body.appendChild(el);
 }
 
 // ── BONUS DAYS ────────────────────────────────────────
@@ -917,6 +1011,7 @@ function renderProfile(d) {
     }
   });
   const bonusWeeks = new Set(Object.entries(gymByWeek).filter(([,c]) => c >= 5).map(([wk]) => wk));
+  const streak     = computeStreak(history.map(h => h.date));
 
   const makeBonusRow = () =>
     `<div class="hist-row hist-bonus-row">
@@ -959,6 +1054,7 @@ function renderProfile(d) {
         <div class="profile-stat"><div class="profile-stat-val">${d.totalPoints || 0}</div><div class="profile-stat-lbl">Pontos</div></div>
         <div class="profile-stat"><div class="profile-stat-val">${d.totalDays || 0}</div><div class="profile-stat-lbl">Dias ativos</div></div>
         <div class="profile-stat"><div class="profile-stat-val">#${d.rank || '—'}</div><div class="profile-stat-lbl">Posição</div></div>
+        <div class="profile-stat"><div class="profile-stat-val">🔥${streak}</div><div class="profile-stat-lbl">Seguidos</div></div>
       </div>
       ${bonusWeeks.size > 0 ? `<div class="bonus-breakdown">Atividades: ${(d.totalPoints||0) - bonusWeeks.size*3} pts + <span>Bônus: ${bonusWeeks.size*3} pts (${bonusWeeks.size}× semana completa)</span></div>` : ''}
     </div>

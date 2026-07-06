@@ -10,22 +10,25 @@ App de desafio de saúde em grupo, 100% no navegador via GitHub Pages. Participa
 
 ### Para os participantes
 - **Cadastro e login** com nome e senha — a senha nunca trafega em texto puro (SHA-256 no navegador antes de enviar)
-- **Registro diário** de três atividades com toggle (marca/desmarca):
+- **Registro diário** de quatro atividades com toggle (marca/desmarca):
   - 🏃 Cardio (mínimo 1km)
   - 🏋️ Atividade física (academia/treino)
-  - 🥗 Desafio alimentar da semana
-- **Ranking por categoria** com filtros: 🏆 Geral · 🏃 Cardio · 🏋️ Academia · 🥗 Alimentação
-- **Perfil individual** com pontos totais, dias ativos, posição no ranking e histórico completo
-- **Bônus automático** de +3 pontos por semana completa (5 dias com pelo menos 1 atividade)
+  - 🥗 Desafio alimentar da semana (vale só de segunda a sexta)
+  - 😴 Sono (7–9h de sono)
+- **Ranking por categoria** com filtros: 🏆 Geral · 🏃 Cardio · 🏋️ Academia · 🥗 Alimentação · 😴 Sono
+- **Perfil individual** com pontos totais, dias ativos, sequência de dias seguidos ativos (streak), posição no ranking e histórico completo
+- **Bônus automático** de +3 pontos por semana completa (5 dias com atividade física registrada na academia)
+- **Recuperação de senha** por código gerado no cadastro (sem depender do admin)
 - **Troca de senha** e exclusão de conta
 
 ### Para o admin
 - Login por senha separada (verificada no servidor — não fica exposta no HTML)
 - Dashboard com totais: participantes, atividades, ativos hoje e na semana
-- Top 10 por categoria: geral, cardio, academia e alimentação
+- Top 10 por categoria: geral, cardio, academia, alimentação e sono
 - Presença semanal de todos os participantes
+- **Bloqueio individual** de cada atividade (cardio, academia, alimentação, sono e bônus) sem precisar mexer no código
 - **Desafio alimentar** editável direto pela aba "Desafio" no painel admin (sem mexer na planilha)
-- **Resetar senha** de qualquer participante pela aba "Usuários"
+- **Resetar senha** de qualquer participante pela aba "Usuários" (fallback caso o participante perca o código de recuperação)
 - **Ver perfil detalhado** de cada participante (pontos por categoria, histórico dos últimos 10 dias, posição no ranking)
 
 ---
@@ -106,23 +109,23 @@ desafio-saude/
 Browser (GitHub Pages — index.html)
     │
     ├── GET  ?action=ranking               → ranking público
-    ├── GET  ?action=today                 → atividades do usuário hoje (auth)
-    ├── GET  ?action=weekpresence          → presença semanal (auth)
-    ├── GET  ?action=profile               → perfil individual (auth)
+    ├── GET  ?action=init                  → atividades de hoje + presença da semana + config (auth)
+    ├── GET  ?action=profile               → perfil individual, incluindo streak (auth)
     ├── GET  ?action=admin&adminToken=...  → dashboard admin (auth token diário)
     ├── GET  ?action=config                → desafio alimentar da semana
     │
-    ├── POST action=register          → cria usuário
+    ├── POST action=register          → cria usuário (retorna código de recuperação)
     ├── POST action=login             → valida credenciais
     ├── POST action=adminLogin        → autentica admin, retorna token
     ├── POST action=activity          → salva/remove atividade (auth)
     ├── POST action=changePassword    → altera senha (auth)
+    ├── POST action=forgotPassword    → redefine senha via código de recuperação
     └── POST action=deleteUser        → exclui conta (auth)
          │
     Google Apps Script (Web App)
          │
     Google Sheets
-         ├── Usuarios   → Nome | SenhaHash | DataCadastro
+         ├── Usuarios   → Nome | SenhaHash | DataCadastro | RecoveryHash
          ├── Atividades → Timestamp | Nome | Atividade | Data
          └── Config     → Chave | Valor
 ```
@@ -135,10 +138,11 @@ Browser (GitHub Pages — index.html)
 |---|---|
 | Cardio (mínimo 1km) | +1 pt |
 | Atividade física | +1 pt |
-| Desafio alimentar cumprido | +1 pt |
-| Bônus: semana completa (5 dias ativos) | +3 pts |
+| Desafio alimentar cumprido (seg–sex) | +1 pt |
+| Sono (7–9h) | +1 pt |
+| Bônus: semana completa | +3 pts |
 
-O bônus é calculado automaticamente no backend: toda semana ISO com pelo menos 1 atividade em 5 dias distintos recebe +3 pontos extras.
+O bônus é calculado automaticamente no backend: toda semana ISO com **atividade física (academia) registrada em 5 dias distintos** recebe +3 pontos extras — as outras atividades (cardio, alimentação, sono) não contam para o bônus, só para a pontuação própria.
 
 ---
 
@@ -146,6 +150,7 @@ O bônus é calculado automaticamente no backend: toda semana ISO com pelo menos
 
 - Senhas armazenadas apenas como hash SHA-256 gerado no navegador (nunca a senha em texto)
 - Token de sessão derivado de `sha256(nomeCanônico + hashDaSenha)`, validado no servidor a cada requisição
+- Código de recuperação de senha também trafega e é armazenado como hash SHA-256, nunca em texto puro
 - Senha admin existe apenas no Apps Script — nunca no HTML ou no repositório
 - Token admin é rotativo (muda diariamente, baseado na data no horário de Brasília)
 - Datas calculadas no servidor sempre no fuso `America/Sao_Paulo`
