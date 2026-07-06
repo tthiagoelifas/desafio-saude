@@ -37,6 +37,7 @@ function doPost(e) {
     if (action === 'deleteUser')     return deleteUser(d);
     if (action === 'adminLogin')     return adminLogin(d);
     if (action === 'changePassword') return changePassword(d);
+    if (action === 'forgotPassword') return forgotPassword(d);
     if (action === 'adminSetConfig') return adminSetConfig(d);
     if (action === 'adminResetPass') return adminResetPassword(d);
 
@@ -63,8 +64,43 @@ function registerUser(d) {
     }
   }
 
-  sheet.appendRow([name, passHash, Utilities.formatDate(new Date(), 'America/Sao_Paulo', "yyyy-MM-dd'T'HH:mm:ss")]);
-  return json({ success: true, storedName: name });
+  // Código de recuperação: gerado uma única vez e mostrado ao usuário no cadastro.
+  // Só o hash fica salvo — quem perder o código precisa do admin para resetar a senha.
+  const recoveryCode = generateRecoveryCode();
+  sheet.appendRow([
+    name,
+    passHash,
+    Utilities.formatDate(new Date(), 'America/Sao_Paulo', "yyyy-MM-dd'T'HH:mm:ss"),
+    sha256Gas(recoveryCode)
+  ]);
+  return json({ success: true, storedName: name, recoveryCode });
+}
+
+function generateRecoveryCode() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // sem caracteres ambíguos (0/O, 1/I/L)
+  let code = '';
+  for (let i = 0; i < 8; i++) code += chars.charAt(Math.floor(Math.random() * chars.length));
+  return code;
+}
+
+function forgotPassword(d) {
+  const { name, recoveryHash, newPassHash } = d;
+  if (!name || !recoveryHash || !newPassHash) return json({ success: false, error: 'Campos obrigatórios.' });
+
+  const sheet = getUserSheet();
+  const rows  = sheet.getDataRange().getValues();
+  const lname = name.toLowerCase();
+
+  for (let i = 1; i < rows.length; i++) {
+    if (rows[i][0].toString().toLowerCase() === lname) {
+      const storedHash = rows[i][3] ? rows[i][3].toString() : '';
+      if (!storedHash) return json({ success: false, error: 'Esta conta não tem código de recuperação cadastrado. Peça para o admin resetar sua senha.' });
+      if (storedHash !== recoveryHash) return json({ success: false, error: 'Código de recuperação incorreto.' });
+      sheet.getRange(i + 1, 2).setValue(newPassHash);
+      return json({ success: true });
+    }
+  }
+  return json({ success: false, error: 'Usuário não encontrado.' });
 }
 
 function loginUser(d) {
@@ -498,9 +534,12 @@ function getUserSheet() {
   let s = ss.getSheetByName(SHEET_USERS);
   if (!s) {
     s = ss.insertSheet(SHEET_USERS);
-    s.appendRow(['Nome', 'SenhaHash', 'DataCadastro']);
+    s.appendRow(['Nome', 'SenhaHash', 'DataCadastro', 'RecoveryHash']);
     s.getRange('1:1').setFontWeight('bold');
     s.setFrozenRows(1);
+  } else if (s.getRange(1, 4).getValue() !== 'RecoveryHash') {
+    // Migração: planilhas criadas antes do recurso de recuperação de senha não têm essa coluna.
+    s.getRange(1, 4).setValue('RecoveryHash');
   }
   return s;
 }
