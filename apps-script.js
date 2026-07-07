@@ -6,6 +6,7 @@
 const SHEET_USERS  = 'Usuarios';
 const SHEET_ACTS   = 'Atividades';
 const SHEET_CONFIG = 'Config';
+const SHEET_WATER  = 'Agua';
 
 // Senha do admin — só existe no servidor, nunca no HTML
 const ADMIN_PASS = 'saude2026';
@@ -40,6 +41,8 @@ function doPost(e) {
     if (action === 'forgotPassword') return forgotPassword(d);
     if (action === 'adminSetConfig') return adminSetConfig(d);
     if (action === 'adminResetPass') return adminResetPassword(d);
+    if (action === 'addWater')             return addWater(d);
+    if (action === 'adminResetActivities') return adminResetActivities(d);
 
     return json({ success: false, error: 'ação desconhecida' });
   } catch (err) {
@@ -198,8 +201,25 @@ function getLocks() {
     // Desafio alimentar vale só de segunda a sexta: trava sozinho no fim de semana.
     food:   cfg.lock_food   === '1' || isWeekend(todayStr),
     sleep:  cfg.lock_sleep  === '1',
+    water:  cfg.lock_water  === '1',
     bonus:  cfg.lock_bonus  === '1',
   };
+}
+
+function getWaterGoalConfig() {
+  const cache  = CacheService.getScriptCache();
+  const cached = cache.get('config');
+  let cfg = {};
+  if (cached) {
+    cfg = JSON.parse(cached);
+  } else {
+    const rows = getConfigSheet().getDataRange().getValues();
+    for (let i = 1; i < rows.length; i++) {
+      if (rows[i][0]) cfg[rows[i][0].toString()] = rows[i][1].toString();
+    }
+  }
+  const v = parseInt(cfg.meta_agua, 10);
+  return v > 0 ? v : 2000;
 }
 
 function getInitData(p) {
@@ -218,7 +238,7 @@ function getInitData(p) {
     cache.put('config', JSON.stringify(configData), 3600);
   }
 
-  const actRows  = getActSheet().getDataRange().getValues();
+  const actRows  = getCachedActRows();
   const lname    = p.name.toLowerCase();
   const dates    = (p.dates || '').split(',').filter(Boolean);
   const activities = {};
@@ -236,14 +256,29 @@ function getInitData(p) {
     gym:    configData.lock_gym    === '1',
     food:   configData.lock_food   === '1' || isWeekend(p.date),
     sleep:  configData.lock_sleep  === '1',
+    water:  configData.lock_water  === '1',
     bonus:  configData.lock_bonus  === '1',
   };
+
+  const waterMetaDefault = (parseInt(configData.meta_agua, 10) > 0) ? parseInt(configData.meta_agua, 10) : 2000;
+  const waterRows = getCachedWaterRows();
+  let waterQty  = 0;
+  let waterMeta = waterMetaDefault;
+  for (let i = 1; i < waterRows.length; i++) {
+    if (waterRows[i][0].toString().toLowerCase() === lname && normalizeDate(waterRows[i][1]) === p.date) {
+      waterQty  = parseInt(waterRows[i][2], 10) || 0;
+      waterMeta = parseInt(waterRows[i][3], 10) || waterMetaDefault;
+      break;
+    }
+  }
+  activities.water = waterQty >= waterMeta;
 
   return json({
     desafio_alimentar: configData.desafio_alimentar || '',
     activities,
     presence,
     locks,
+    water: { quantity: waterQty, meta: waterMeta },
     rec_titulo:      configData.rec_titulo      || '',
     rec_cardio:      configData.rec_cardio      || '',
     rec_treino:      configData.rec_treino       || '',
@@ -280,7 +315,7 @@ function saveActivity(d) {
         removed = true;
       }
     }
-    if (removed) CacheService.getScriptCache().remove('ranking');
+    if (removed) invalidateDataCache();
     return json({ success: true, action: removed ? 'removed' : 'not_found' });
   }
 
@@ -291,8 +326,46 @@ function saveActivity(d) {
   }
 
   sheet.appendRow([new Date().toISOString(), d.name, d.activity, d.date]);
-  CacheService.getScriptCache().remove('ranking');
+  invalidateDataCache();
   return json({ success: true, action: 'saved' });
+}
+
+// ══════════════════════════════════════════════════════
+//  ÁGUA — meta diária configurável, abastecida aos poucos
+//  (copo/garrafinha) ou concluída direto. Ao bater a meta,
+//  conta como atividade normal (+1 pt).
+// ══════════════════════════════════════════════════════
+
+function addWater(d) {
+  if (!validateToken(d.name, d.token)) return json({ auth: false });
+
+  const finish = !!d.finish;
+  const amount = finish ? 0 : (parseInt(d.amount, 10) || 0);
+  if (finish || amount > 0) {
+    if (getLocks().water) return json({ success: false, locked: true, error: 'Meta de água bloqueada pelo administrador.' });
+  }
+
+  const sheet   = getWaterSheet();
+  const rows    = sheet.getDataRange().getValues();
+  const lname   = d.name.toLowerCase();
+  const default_ = getWaterGoalConfig();
+
+  for (let i = 1; i < rows.length; i++) {
+    if (rows[i][0].toString().toLowerCase() === lname && normalizeDate(rows[i][1]) === d.date) {
+      const meta    = parseInt(rows[i][3], 10) || default_;
+      const current = parseInt(rows[i][2], 10) || 0;
+      const newQty  = finish ? meta : Math.max(0, current + amount);
+      sheet.getRange(i + 1, 3).setValue(newQty);
+      invalidateDataCache();
+      return json({ success: true, quantity: newQty, meta, done: newQty >= meta });
+    }
+  }
+
+  const meta   = default_;
+  const newQty = finish ? meta : Math.max(0, amount);
+  sheet.appendRow([d.name, d.date, newQty, meta]);
+  invalidateDataCache();
+  return json({ success: true, quantity: newQty, meta, done: newQty >= meta });
 }
 
 // ══════════════════════════════════════════════════════
@@ -302,10 +375,11 @@ function saveActivity(d) {
 function getProfile(name, token) {
   if (!validateToken(name, token)) return json({ auth: false });
 
-  const actRows = getActSheet().getDataRange().getValues();
-  const userRow = findUser(name);
-  const since   = userRow ? userRow[2].toString().split('T')[0] : '';
-  const lname   = name.toLowerCase();
+  const actRows   = getCachedActRows();
+  const waterRows = getCachedWaterRows();
+  const userRow   = findUser(name);
+  const since     = userRow ? userRow[2].toString().split('T')[0] : '';
+  const lname     = name.toLowerCase();
 
   const byDate = {};
   for (let i = 1; i < actRows.length; i++) {
@@ -315,6 +389,7 @@ function getProfile(name, token) {
     if (!byDate[date]) byDate[date] = new Set();
     byDate[date].add(act);
   }
+  mergeWaterIntoByDate(byDate, waterRows, lname);
 
   const sortedDates = Object.keys(byDate).sort((a, b) => b.localeCompare(a));
   const history     = sortedDates.map(date => {
@@ -322,7 +397,7 @@ function getProfile(name, token) {
     return { date, activities: acts, points: acts.length };
   });
 
-  const scores  = buildScores(actRows, getLocks());
+  const scores  = buildScores(actRows, getLocks(), waterRows);
   const myScore = scores[userRow ? userRow[0] : name] || { total: 0, actCount: 0 };
   const ranking = toRankingArray(scores, 'total');
   const rank    = ranking.findIndex(p => p.name.toLowerCase() === lname) + 1;
@@ -351,6 +426,15 @@ function deleteUser(d) {
     }
   }
 
+  const wSheet = getWaterSheet();
+  const wRows  = wSheet.getDataRange().getValues();
+  for (let i = wRows.length - 1; i >= 1; i--) {
+    if (wRows[i][0].toString().toLowerCase() === lname) {
+      wSheet.deleteRow(i + 1);
+    }
+  }
+
+  invalidateDataCache();
   return json({ success: true });
 }
 
@@ -363,14 +447,11 @@ function getRanking() {
   const cached = cache.get('ranking');
   if (cached) return json(JSON.parse(cached));
 
-  const rows   = getActSheet().getDataRange().getValues();
-  const scores = buildScores(rows, getLocks());
-  const data   = {
-    ranking:       toRankingArray(scores, 'total'),
-    cardioRanking: toRankingArray(scores, 'cardio'),
-    gymRanking:    toRankingArray(scores, 'gym'),
-    foodRanking:   toRankingArray(scores, 'food'),
-    sleepRanking:  toRankingArray(scores, 'sleep'),
+  const rows      = getCachedActRows();
+  const waterRows = getCachedWaterRows();
+  const scores    = buildScores(rows, getLocks(), waterRows);
+  const data      = {
+    ranking: toRankingArray(scores, 'total'),
   };
   cache.put('ranking', JSON.stringify(data), 300);
   return json(data);
@@ -383,12 +464,13 @@ function getRanking() {
 function getAdminDashboard(adminToken) {
   if (!validateAdminToken(adminToken)) return json({ auth: false });
 
-  const actRows   = getActSheet().getDataRange().getValues();
+  const actRows   = getCachedActRows();
+  const waterRows = getCachedWaterRows();
   const uRows     = getUserSheet().getDataRange().getValues();
   const todayStr  = Utilities.formatDate(new Date(), 'America/Sao_Paulo', 'yyyy-MM-dd');
   const weekDates = getCurrentWeekDates();
   const locks     = getLocks();
-  const scores    = buildScores(actRows, locks);
+  const scores    = buildScores(actRows, locks, waterRows);
 
   const participants   = new Set(uRows.slice(1).map(r => r[0]).filter(Boolean));
   const activeTodaySet = new Set();
@@ -398,6 +480,14 @@ function getAdminDashboard(adminToken) {
     const nd = normalizeDate(r[3]);
     if (nd === todayStr)          activeTodaySet.add(r[1]);
     if (weekDates.includes(nd))   activeWeekSet.add(r[1]);
+  });
+  waterRows.slice(1).forEach(r => {
+    const name = r[0], date = normalizeDate(r[1]);
+    const qty  = parseInt(r[2], 10) || 0;
+    const meta = parseInt(r[3], 10) || 2000;
+    if (!name || qty < meta) return;
+    if (date === todayStr)        activeTodaySet.add(name);
+    if (weekDates.includes(date)) activeWeekSet.add(name);
   });
 
   const presMap = {};
@@ -427,10 +517,6 @@ function getAdminDashboard(adminToken) {
     activeToday:       activeTodaySet.size,
     activeThisWeek:    activeWeekSet.size,
     ranking:           toRankingArray(scores, 'total'),
-    cardioRanking:     toRankingArray(scores, 'cardio'),
-    gymRanking:        toRankingArray(scores, 'gym'),
-    foodRanking:       toRankingArray(scores, 'food'),
-    sleepRanking:      toRankingArray(scores, 'sleep'),
     weekPresence,
     userList
   });
@@ -448,8 +534,9 @@ function normalizeDate(val) {
   return val.toString().trim();
 }
 
-function buildScores(rows, locks) {
-  locks = locks || {};
+function buildScores(rows, locks, waterRows) {
+  locks     = locks || {};
+  waterRows = waterRows || [];
   const map  = {};
   const seen = new Set();
   rows.slice(1).forEach(r => {
@@ -460,7 +547,7 @@ function buildScores(rows, locks) {
     const dedupeKey = `${name.toString().toLowerCase()}|${act}|${date}`;
     if (seen.has(dedupeKey)) return;
     seen.add(dedupeKey);
-    if (!map[name]) map[name] = { total: 0, cardio: 0, gym: 0, food: 0, sleep: 0, actCount: 0, weekDays: {} };
+    if (!map[name]) map[name] = { total: 0, cardio: 0, gym: 0, food: 0, sleep: 0, water: 0, actCount: 0, weekDays: {} };
     map[name][act]      = (map[name][act] || 0) + 1;
     map[name].total    += 1;
     map[name].actCount += 1;
@@ -470,12 +557,39 @@ function buildScores(rows, locks) {
       map[name].weekDays[wk].add(date);
     }
   });
+  // Água conta como atividade só no dia em que a meta (armazenada na própria linha) foi batida.
+  waterRows.slice(1).forEach(r => {
+    const name = r[0], date = normalizeDate(r[1]);
+    const qty  = parseInt(r[2], 10) || 0;
+    const meta = parseInt(r[3], 10) || 2000;
+    if (!name || !date || qty < meta) return;
+    const dedupeKey = `${name.toString().toLowerCase()}|water|${date}`;
+    if (seen.has(dedupeKey)) return;
+    seen.add(dedupeKey);
+    if (!map[name]) map[name] = { total: 0, cardio: 0, gym: 0, food: 0, sleep: 0, water: 0, actCount: 0, weekDays: {} };
+    map[name].water    += 1;
+    map[name].total    += 1;
+    map[name].actCount += 1;
+  });
   if (!locks.bonus) {
     Object.values(map).forEach(s => {
       Object.values(s.weekDays).forEach(days => { if (days.size >= 5) s.total += 3; });
     });
   }
   return map;
+}
+
+// Junta os dias em que a meta de água foi batida ao mapa de atividades por data (usado no histórico).
+function mergeWaterIntoByDate(byDate, waterRows, lname) {
+  for (let i = 1; i < waterRows.length; i++) {
+    if (waterRows[i][0].toString().toLowerCase() !== lname) continue;
+    const qty  = parseInt(waterRows[i][2], 10) || 0;
+    const meta = parseInt(waterRows[i][3], 10) || 2000;
+    if (qty < meta) continue;
+    const date = normalizeDate(waterRows[i][1]);
+    if (!byDate[date]) byDate[date] = new Set();
+    byDate[date].add('water');
+  }
 }
 
 function toRankingArray(scores, key) {
@@ -556,6 +670,42 @@ function getActSheet() {
   return s;
 }
 
+// Leitura da planilha inteira é a operação mais lenta do backend e se repete a cada
+// abertura de tela (init, ranking, perfil, admin). Cache curto (a mesma escrita que já
+// invalida o cache de 'ranking' precisa invalidar este também — ver CACHE_DATA_KEYS).
+const CACHE_DATA_TTL  = 45; // segundos
+const CACHE_DATA_KEYS = ['actRows', 'waterRows'];
+
+function invalidateDataCache() {
+  const cache = CacheService.getScriptCache();
+  cache.remove('ranking');
+  CACHE_DATA_KEYS.forEach(k => cache.remove(k));
+}
+
+function getCachedActRows() {
+  const cache  = CacheService.getScriptCache();
+  const cached = cache.get('actRows');
+  if (cached) return JSON.parse(cached);
+
+  const rows = getActSheet().getDataRange().getValues();
+  // Normaliza a coluna Data agora, senão o round-trip por JSON perderia a formatação
+  // de Date que normalizeDate() sabe tratar (ver comentário na própria normalizeDate).
+  const normalized = rows.map((r, i) => i === 0 ? r : [r[0], r[1], r[2], normalizeDate(r[3])]);
+  try { cache.put('actRows', JSON.stringify(normalized), CACHE_DATA_TTL); } catch (e) { /* linha muito grande p/ cache — ok, só não cacheia */ }
+  return normalized;
+}
+
+function getCachedWaterRows() {
+  const cache  = CacheService.getScriptCache();
+  const cached = cache.get('waterRows');
+  if (cached) return JSON.parse(cached);
+
+  const rows = getWaterSheet().getDataRange().getValues();
+  const normalized = rows.map((r, i) => i === 0 ? r : [r[0], normalizeDate(r[1]), r[2], r[3]]);
+  try { cache.put('waterRows', JSON.stringify(normalized), CACHE_DATA_TTL); } catch (e) { /* idem */ }
+  return normalized;
+}
+
 function getConfigSheet() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   let s = ss.getSheetByName(SHEET_CONFIG);
@@ -563,6 +713,19 @@ function getConfigSheet() {
     s = ss.insertSheet(SHEET_CONFIG);
     s.appendRow(['Chave', 'Valor']);
     s.appendRow(['desafio_alimentar', 'Reduzir os excessos — evite ultraprocessados, açúcar e álcool esta semana 🌱']);
+    s.appendRow(['meta_agua', '2000']);
+    s.getRange('1:1').setFontWeight('bold');
+    s.setFrozenRows(1);
+  }
+  return s;
+}
+
+function getWaterSheet() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let s = ss.getSheetByName(SHEET_WATER);
+  if (!s) {
+    s = ss.insertSheet(SHEET_WATER);
+    s.appendRow(['Nome', 'Data', 'Quantidade', 'Meta']);
     s.getRange('1:1').setFontWeight('bold');
     s.setFrozenRows(1);
   }
@@ -602,12 +765,28 @@ function adminResetPassword(d) {
   return json({ success: false, error: 'Usuário não encontrado.' });
 }
 
+// Zera todas as atividades e registros de água de todos os usuários (mantém cadastros).
+// Usado pelo admin para "fechar o mês" e começar o próximo do zero.
+function adminResetActivities(d) {
+  if (!validateAdminToken(d.adminToken)) return json({ auth: false });
+
+  const actSheet = getActSheet();
+  if (actSheet.getLastRow() > 1) actSheet.deleteRows(2, actSheet.getLastRow() - 1);
+
+  const waterSheet = getWaterSheet();
+  if (waterSheet.getLastRow() > 1) waterSheet.deleteRows(2, waterSheet.getLastRow() - 1);
+
+  invalidateDataCache();
+  return json({ success: true });
+}
+
 function adminGetUserProfile(params) {
   if (!validateAdminToken(params.adminToken)) return json({ auth: false });
   if (!params.name)                           return json({ success: false, error: 'Nome obrigatório.' });
 
-  const actRows = getActSheet().getDataRange().getValues();
-  const userRow = findUser(params.name);
+  const actRows   = getCachedActRows();
+  const waterRows = getCachedWaterRows();
+  const userRow   = findUser(params.name);
   if (!userRow) return json({ success: false, error: 'Usuário não encontrado.' });
 
   const since = userRow[2] ? userRow[2].toString().split('T')[0] : '';
@@ -621,6 +800,7 @@ function adminGetUserProfile(params) {
     if (!byDate[date]) byDate[date] = new Set();
     byDate[date].add(act);
   }
+  mergeWaterIntoByDate(byDate, waterRows, lname);
 
   const sortedDates = Object.keys(byDate).sort((a, b) => b.localeCompare(a));
   const history     = sortedDates.map(date => {
@@ -628,8 +808,8 @@ function adminGetUserProfile(params) {
     return { date, activities: acts, points: acts.length };
   });
 
-  const scores  = buildScores(actRows, getLocks());
-  const myScore = scores[userRow[0]] || { total: 0, actCount: 0, cardio: 0, gym: 0, food: 0 };
+  const scores  = buildScores(actRows, getLocks(), waterRows);
+  const myScore = scores[userRow[0]] || { total: 0, actCount: 0, cardio: 0, gym: 0, food: 0, water: 0 };
   const ranking = toRankingArray(scores, 'total');
   const rank    = ranking.findIndex(u => u.name.toLowerCase() === lname) + 1;
 
@@ -642,6 +822,7 @@ function adminGetUserProfile(params) {
     gymCount:    myScore.gym    || 0,
     foodCount:   myScore.food   || 0,
     sleepCount:  myScore.sleep  || 0,
+    waterCount:  myScore.water  || 0,
     rank,
     history
   });

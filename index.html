@@ -4,12 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>Desafio Saúde 🌿</title>
-<link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#1a4d32">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Desafio Saúde">
-<link rel="apple-touch-icon" href="icon.svg">
+<link rel="icon" href="icon.svg">
 <style>
 @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@400;500;600&display=swap');
 :root{
@@ -248,25 +244,36 @@ body{font-family:'DM Sans',sans-serif;background:var(--g50);color:var(--gray900)
 .acts-val-gym{font-weight:700;color:var(--g600);}
 .acts-val-food{font-weight:700;color:var(--a400);}
 .acts-val-sleep{font-weight:700;color:#7c3aed;}
+.acts-val-water{font-weight:700;color:#0891b2;}
 .acts-sub{color:var(--gray400);}
-.mini-acts-grid{grid-template-columns:1fr 1fr !important;}
-
-/* ── PWA INSTALL BANNER ── */
-.pwa-banner{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);width:calc(100% - 32px);max-width:398px;background:var(--g900);border-radius:var(--rlg);padding:14px 15px;display:flex;align-items:center;gap:12px;z-index:500;box-shadow:0 4px 28px rgba(0,0,0,.3);animation:pwaSlideUp .35s ease;}
-@keyframes pwaSlideUp{from{transform:translateX(-50%) translateY(16px);opacity:0}to{transform:translateX(-50%) translateY(0);opacity:1}}
-.pwa-ico{font-size:26px;flex-shrink:0;}
-.pwa-info{flex:1;min-width:0;}
-.pwa-title{font-size:13px;font-weight:700;color:white;margin-bottom:2px;}
-.pwa-sub{font-size:11px;color:var(--g200);line-height:1.45;}
-.pwa-btns{display:flex;align-items:center;gap:8px;flex-shrink:0;}
-.pwa-install{background:var(--g400);color:white;border:none;border-radius:8px;padding:9px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;}
-.pwa-dismiss{background:none;border:none;color:rgba(255,255,255,.35);font-size:20px;cursor:pointer;padding:4px;line-height:1;}
 
 /* ── SONO CARD ── */
 .act-card.act-sleep.done{border-color:#a78bfa;border-width:2px;background:#faf8ff;}
 .act-card.act-sleep.done::after{background:#7c3aed;}
 .act-card.act-sleep.done .act-name{color:#7c3aed;}
 .act-card.act-sleep.done .act-done-label{color:#7c3aed;}
+
+/* ── ÁGUA CARD ── */
+.water-card{background:var(--b100);border-radius:var(--rlg);padding:15px;margin-bottom:16px;border:1px solid #aed4f0;transition:.2s;}
+.water-card.done{background:#eafaf1;border-color:var(--g400);}
+.water-sub{font-size:13px;color:#1a4d88;margin-bottom:10px;line-height:1.5;}
+.water-card.done .water-sub{color:var(--g800);}
+.water-progress-track{height:10px;border-radius:6px;background:rgba(255,255,255,.6);overflow:hidden;margin-bottom:6px;}
+.water-progress-fill{height:100%;background:var(--b400);border-radius:6px;transition:width .3s;}
+.water-card.done .water-progress-fill{background:var(--g400);}
+.water-amounts{display:flex;justify-content:space-between;font-size:12px;font-weight:700;color:var(--b400);margin-bottom:10px;}
+.water-card.done .water-amounts{color:var(--g600);}
+.water-btns{display:flex;gap:6px;flex-wrap:wrap;}
+.water-btn{flex:1;min-width:68px;padding:9px 6px;border-radius:10px;border:1.5px solid #aed4f0;background:white;color:var(--b400);font-family:inherit;font-size:11px;font-weight:700;cursor:pointer;text-align:center;transition:.15s;}
+.water-btn:active{background:var(--b100);transform:scale(.96);}
+.water-btn.finish{background:var(--b400);color:white;border-color:var(--b400);}
+.water-locked-msg{font-size:12px;color:var(--gray400);font-weight:600;margin-bottom:8px;display:none;}
+.water-card.locked{opacity:.55;}
+.water-card.locked .water-interactive{display:none;}
+.water-card.locked .water-locked-msg{display:block;}
+.water-card.locked .water-sub{display:none;}
+.water-done-msg{display:none;font-size:12px;font-weight:700;color:var(--g600);margin-top:8px;}
+.hist-chip.water{background:#dbf3fb;color:#0891b2;}
 
 /* ── RECOMENDAÇÕES ── */
 .rec-section{margin-bottom:16px;}
@@ -400,6 +407,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--g50);color:var(--gray900)
         <span class="act-pill" id="pillGym">🏋️</span>
         <span class="act-pill" id="pillFood">🥗</span>
         <span class="act-pill" id="pillSleep">😴</span>
+        <span class="act-pill" id="pillWater">💧</span>
       </div>
     </div>
     <h1 class="header-title">Bora treinar!</h1>
@@ -461,6 +469,20 @@ body{font-family:'DM Sans',sans-serif;background:var(--g50);color:var(--gray900)
       </div>
     </div>
 
+    <div class="water-card" id="waterCard">
+      <div class="bonus-label">💧 Meta de água</div>
+      <div class="water-locked-msg">🔒 Meta bloqueada — em breve</div>
+      <p class="water-sub">Beba <strong id="waterGoalLbl">2L</strong> de água hoje e ganhe +1 pt.</p>
+      <div class="water-progress-track"><div class="water-progress-fill" id="waterFill" style="width:0%"></div></div>
+      <div class="water-amounts"><span id="waterAmountLbl">0 ml</span><span id="waterGoalLbl2">/ 2000 ml</span></div>
+      <div class="water-btns water-interactive">
+        <button class="water-btn" onclick="addWater(500)">🥤 +500ml</button>
+        <button class="water-btn" onclick="addWater(1000)">🍶 +1L</button>
+        <button class="water-btn finish" onclick="finishWater()">✓ Concluir</button>
+      </div>
+      <div class="water-done-msg" id="waterDoneMsg">✅ Meta atingida! +1 pt hoje.</div>
+    </div>
+
     <div id="recSection" style="display:none">
       <div class="rec-week-header">
         <span class="section-title" style="margin:0">Recomendações</span>
@@ -495,13 +517,6 @@ body{font-family:'DM Sans',sans-serif;background:var(--g50);color:var(--gray900)
 
   <!-- RANKING -->
   <div id="tabRanking" class="content" style="display:none">
-    <div class="filter-group" id="rankingFilters">
-      <button class="filter-btn active" onclick="setRankingFilter('geral',this)">🏆 Geral</button>
-      <button class="filter-btn" onclick="setRankingFilter('cardio',this)">🏃 Cardio</button>
-      <button class="filter-btn" onclick="setRankingFilter('gym',this)">🏋️ Func./Academia</button>
-      <button class="filter-btn" onclick="setRankingFilter('food',this)">🥗 Alimentação</button>
-      <button class="filter-btn" onclick="setRankingFilter('sleep',this)">😴 Sono</button>
-    </div>
     <button class="sync-btn" onclick="loadRanking()">🔄 Atualizar</button>
     <div id="rankingList"><div class="loading"><div class="spinner"></div>Carregando...</div></div>
   </div>
@@ -533,10 +548,6 @@ body{font-family:'DM Sans',sans-serif;background:var(--g50);color:var(--gray900)
     </div>
     <div class="filter-group">
       <button class="filter-btn active" onclick="showAdminTab('geral',this)">🏆 Geral</button>
-      <button class="filter-btn" onclick="showAdminTab('cardio',this)">🏃 Cardio</button>
-      <button class="filter-btn" onclick="showAdminTab('gym',this)">🏋️ Func./Academia</button>
-      <button class="filter-btn" onclick="showAdminTab('food',this)">🥗 Alimentação</button>
-      <button class="filter-btn" onclick="showAdminTab('sleep',this)">😴 Sono</button>
       <button class="filter-btn" onclick="showAdminTab('presenca',this)">📅 Presença</button>
       <button class="filter-btn" onclick="showAdminTab('desafio',this)">🍎 Desafio</button>
       <button class="filter-btn" onclick="showAdminTab('usuarios',this)">👥 Usuários</button>
@@ -546,31 +557,6 @@ body{font-family:'DM Sans',sans-serif;background:var(--g50);color:var(--gray900)
 </div>
 
 <div class="toast" id="toast"></div>
-
-<!-- Banner Android/Chrome -->
-<div id="pwaBannerAndroid" class="pwa-banner" style="display:none">
-  <div class="pwa-ico">🌿</div>
-  <div class="pwa-info">
-    <div class="pwa-title">Instalar Desafio Saúde</div>
-    <div class="pwa-sub">Adicione à tela inicial para acesso rápido</div>
-  </div>
-  <div class="pwa-btns">
-    <button class="pwa-install" onclick="installPWA()">Instalar</button>
-    <button class="pwa-dismiss" onclick="dismissPWA()" aria-label="Fechar">✕</button>
-  </div>
-</div>
-
-<!-- Banner iOS/Safari -->
-<div id="pwaBannerIOS" class="pwa-banner" style="display:none">
-  <div class="pwa-ico">🌿</div>
-  <div class="pwa-info">
-    <div class="pwa-title">Adicionar à Tela de Início</div>
-    <div class="pwa-sub">Toque em <strong style="color:white">Compartilhar ↑</strong> e depois em <strong style="color:white">"Adicionar à Tela de Início"</strong></div>
-  </div>
-  <div class="pwa-btns">
-    <button class="pwa-dismiss" onclick="dismissPWA()" aria-label="Fechar">✕</button>
-  </div>
-</div>
 
 <script>
 // ════════════════════════════════════
@@ -587,11 +573,11 @@ const TODAY = localDateStr(new Date());
 let session        = JSON.parse(localStorage.getItem('ds_session') || 'null');
 let adminToken     = sessionStorage.getItem('ds_admin_token') || null;
 let todayState     = {};
+let waterState     = { quantity: 0, meta: 2000 };
 let locksState     = {};
 let adminData      = null;
 let activeAdminTab = 'geral';
 let rankingData       = null;
-let rankingFilter     = 'geral';
 let adminUsers        = [];
 let weekDatesCache    = [];
 let weekPresenceCache = {};
@@ -773,17 +759,20 @@ async function loadInitData() {
     todayState        = r.activities || {};
     weekPresenceCache = r.presence   || {};
     locksState        = r.locks      || {};
+    waterState         = r.water      || { quantity: 0, meta: 2000 };
     renderRecs(r);
   } catch(e) {
     toast('⚠️ Erro ao carregar dados', true);
     todayState        = {};
     weekPresenceCache = {};
     locksState        = {};
+    waterState         = { quantity: 0, meta: 2000 };
   }
   setCardsLoading(false);
   renderToday();
   renderLocks();
   renderBonusDaysLocal();
+  renderWaterCard();
 }
 
 function setCardsLoading(on) {
@@ -793,7 +782,7 @@ function setCardsLoading(on) {
 // ── RENDER TODAY ──────────────────────────────────────
 function renderToday() {
   const s   = todayState;
-  const pts = (s.cardio ? 1 : 0) + (s.gym ? 1 : 0) + (s.food ? 1 : 0) + (s.sleep ? 1 : 0);
+  const pts = (s.cardio ? 1 : 0) + (s.gym ? 1 : 0) + (s.food ? 1 : 0) + (s.sleep ? 1 : 0) + (s.water ? 1 : 0);
 
   document.getElementById('actCardio').classList.toggle('done', !!s.cardio);
   document.getElementById('actGym').classList.toggle('done',    !!s.gym);
@@ -803,10 +792,85 @@ function renderToday() {
   document.getElementById('pillGym').classList.toggle('done',   !!s.gym);
   document.getElementById('pillFood').classList.toggle('done',  !!s.food);
   document.getElementById('pillSleep').classList.toggle('done', !!s.sleep);
+  document.getElementById('pillWater').classList.toggle('done', !!s.water);
 
   document.getElementById('todayPts').textContent = pts;
-  const done = [s.cardio && 'cardio', s.gym && 'funcional', s.food && 'alimentação', s.sleep && 'sono'].filter(Boolean);
+  const done = [s.cardio && 'cardio', s.gym && 'funcional', s.food && 'alimentação', s.sleep && 'sono', s.water && 'água'].filter(Boolean);
   document.getElementById('todayActs').textContent = done.length ? '✓ ' + done.join(' · ') : 'Nenhuma atividade ainda';
+}
+
+// ── ÁGUA ──────────────────────────────────────────────
+function renderWaterCard() {
+  const { quantity, meta } = waterState;
+  const done = quantity >= meta;
+  todayState.water = done;
+
+  const card = document.getElementById('waterCard');
+  card.classList.toggle('done', done);
+  document.getElementById('waterFill').style.width = Math.min(100, (quantity / meta) * 100) + '%';
+  document.getElementById('waterAmountLbl').textContent = quantity + ' ml';
+  document.getElementById('waterGoalLbl2').textContent  = '/ ' + meta + ' ml';
+  document.getElementById('waterGoalLbl').textContent   = (meta / 1000).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + 'L';
+  document.getElementById('waterDoneMsg').style.display = done ? 'block' : 'none';
+  document.getElementById('pillWater').classList.toggle('done', done);
+}
+
+async function addWater(amount) {
+  if (locksState.water) return;
+  const prev = { ...waterState };
+  waterState = { quantity: Math.max(0, waterState.quantity + amount), meta: waterState.meta };
+  const wasDone = prev.quantity >= prev.meta;
+  renderWaterCard();
+  renderToday();
+  try {
+    const r = await apiPost({ action: 'addWater', name: session.name, token: session.token, date: TODAY, amount });
+    if (r.auth === false) { doLogout(); return; }
+    if (r.success) {
+      waterState = { quantity: r.quantity, meta: r.meta };
+      renderWaterCard();
+      renderToday();
+      if (r.done && !wasDone) toast('💧 Meta de água atingida! +1 pt');
+    } else {
+      waterState = prev;
+      renderWaterCard();
+      renderToday();
+      toast('⚠️ ' + (r.error || 'Erro, tente novamente'), true);
+    }
+  } catch(e) {
+    waterState = prev;
+    renderWaterCard();
+    renderToday();
+    toast('⚠️ Sem conexão', true);
+  }
+}
+
+async function finishWater() {
+  if (locksState.water) return;
+  const prev     = { ...waterState };
+  const wasDone  = prev.quantity >= prev.meta;
+  waterState = { quantity: waterState.meta, meta: waterState.meta };
+  renderWaterCard();
+  renderToday();
+  try {
+    const r = await apiPost({ action: 'addWater', name: session.name, token: session.token, date: TODAY, finish: true });
+    if (r.auth === false) { doLogout(); return; }
+    if (r.success) {
+      waterState = { quantity: r.quantity, meta: r.meta };
+      renderWaterCard();
+      renderToday();
+      if (r.done && !wasDone) toast('💧 Meta de água atingida! +1 pt');
+    } else {
+      waterState = prev;
+      renderWaterCard();
+      renderToday();
+      toast('⚠️ ' + (r.error || 'Erro, tente novamente'), true);
+    }
+  } catch(e) {
+    waterState = prev;
+    renderWaterCard();
+    renderToday();
+    toast('⚠️ Sem conexão', true);
+  }
 }
 
 // ── WEEK KEY (espelho do backend) ─────────────────────
@@ -894,6 +958,7 @@ function renderLocks() {
     foodBadge.textContent = (dow === 0 || dow === 6) ? '🔒 Só de seg a sex' : '🔒 Em breve';
   }
   document.querySelector('.bonus-card').classList.toggle('locked', !!locksState.bonus);
+  document.getElementById('waterCard').classList.toggle('locked', !!locksState.water);
 }
 
 // ── TOGGLE ACTIVITY ───────────────────────────────────
@@ -938,23 +1003,10 @@ async function loadRanking() {
   try {
     const r  = await apiFetch('?action=ranking');
     rankingData = r;
-    renderRankingByFilter();
+    renderRanking(rankingData.ranking || []);
   } catch(e) {
     document.getElementById('rankingList').innerHTML = '<div class="empty"><span class="empty-ico">⚠️</span>Erro ao carregar.</div>';
   }
-}
-
-function setRankingFilter(type, btn) {
-  rankingFilter = type;
-  document.querySelectorAll('#rankingFilters .filter-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  if (rankingData) renderRankingByFilter();
-}
-
-function renderRankingByFilter() {
-  const keyMap = { geral: 'ranking', cardio: 'cardioRanking', gym: 'gymRanking', food: 'foodRanking', sleep: 'sleepRanking' };
-  const data   = rankingData[keyMap[rankingFilter]] || [];
-  renderRanking(rankingFilter === 'geral' ? data : data.slice(0, 10));
 }
 
 function renderRanking(ranking) {
@@ -990,7 +1042,7 @@ function renderProfile(d) {
   const ini       = esc(session.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase());
   const history   = d.history || [];
   const SHOW_INIT = 14;
-  const actLabels = { cardio: '🏃 Cardio', gym: '🏋️ Func./Academia', food: '🥗 Alimentação', sleep: '😴 Sono' };
+  const actLabels = { cardio: '🏃 Cardio', gym: '🏋️ Func./Academia', food: '🥗 Alimentação', sleep: '😴 Sono', water: '💧 Água' };
 
   const makeHistRow = row => {
     const chips = (row.activities || []).map(a => `<span class="hist-chip ${esc(a)}">${esc(actLabels[a] || a)}</span>`).join('');
@@ -1182,10 +1234,8 @@ function renderAdminTab(tab) {
     return;
   }
 
-  const keyMap = { geral: 'ranking', cardio: 'cardioRanking', gym: 'gymRanking', food: 'foodRanking', sleep: 'sleepRanking' };
-  const lblMap = { geral: '🏆 Top 10 Geral', cardio: '🏃 Top Cardio', gym: '🏋️ Top Funcional', food: '🥗 Top Alimentação', sleep: '😴 Top Sono' };
-  const data   = (adminData[keyMap[tab]] || []).slice(0, 10);
-  const rows   = data.map((p, i) => {
+  const data = (adminData.ranking || []).slice(0, 10);
+  const rows = data.map((p, i) => {
     const ini = esc(p.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase());
     const pos = i < 3 ? medals[i] : (i + 1), pc = i < 3 ? mc[i] : '';
     return `<div class="rank-card">
@@ -1195,7 +1245,7 @@ function renderAdminTab(tab) {
       <div><div class="rank-pts">${p.points}</div><div class="rank-pts-lbl">pts</div></div>
     </div>`;
   }).join('');
-  el.innerHTML = `<p class="section-title">${lblMap[tab]}</p><div class="rank-list">${rows || '<div class="empty">Nenhum dado ainda</div>'}</div>`;
+  el.innerHTML = `<p class="section-title">🏆 Top 10 Geral</p><div class="rank-list">${rows || '<div class="empty">Nenhum dado ainda</div>'}</div>`;
 }
 
 // ── TABS ──────────────────────────────────────────────
@@ -1290,6 +1340,7 @@ async function renderAdminDesafio(el) {
       { key: 'lock_gym',    label: '🏋️ Atividade Física' },
       { key: 'lock_food',   label: '🥗 Alimentação' },
       { key: 'lock_sleep',  label: '😴 Sono' },
+      { key: 'lock_water',  label: '💧 Água' },
       { key: 'lock_bonus',  label: '⭐ Bônus +3' },
     ];
     const lockRows = lockItems.map(item => {
@@ -1302,6 +1353,7 @@ async function renderAdminDesafio(el) {
       </div>`;
     }).join('');
 
+    const metaAguaL = esc((parseInt(r.meta_agua, 10) > 0 ? parseInt(r.meta_agua, 10) : 2000) / 1000);
     const recTitulo = esc(r.rec_titulo || '');
     const recCardio = esc(r.rec_cardio || '');
     const recTreino = esc(r.rec_treino || '');
@@ -1315,6 +1367,13 @@ async function renderAdminDesafio(el) {
         <textarea id="desafioText" class="field" rows="4" style="resize:vertical;height:auto">${current}</textarea>
         <div class="err-msg" id="desafioErr"></div>
         <button class="btn" id="saveDesafioBtn" onclick="saveDesafio()">Salvar</button>
+      </div>
+      <p class="section-title">Meta de água da semana</p>
+      <div class="card-section" style="margin-bottom:20px">
+        <label class="field-label" for="metaAguaText">Meta diária (em litros)</label>
+        <input type="number" id="metaAguaText" class="field" value="${metaAguaL}" min="0.5" step="0.5" placeholder="Ex: 2">
+        <div class="err-msg" id="metaAguaErr"></div>
+        <button class="btn" id="saveMetaAguaBtn" onclick="saveMetaAgua()">Salvar meta de água</button>
       </div>
       <p class="section-title">Recomendações da semana (opcional)</p>
       <div class="card-section" style="margin-bottom:20px">
@@ -1332,12 +1391,32 @@ async function renderAdminDesafio(el) {
         <button class="btn" id="saveRecsBtn" onclick="saveRecs()">Salvar recomendações</button>
       </div>
       <p class="section-title">Controle de atividades</p>
-      <div class="card-section" style="padding:0 16px">
+      <div class="card-section" style="padding:0 16px;margin-bottom:20px">
         ${lockRows}
+      </div>
+      <p class="section-title">⚠️ Zona de risco</p>
+      <div class="card-section">
+        <p style="font-size:13px;color:var(--gray400);margin-bottom:12px;line-height:1.5">Zera as atividades e a água de <strong>todos</strong> os participantes (mantém contas e senhas). Use para fechar o mês e começar o próximo do zero. Não tem como desfazer.</p>
+        <button class="btn danger" id="resetActsBtn" onclick="doAdminResetActivities()">🗑️ Resetar atividades do mês</button>
       </div>`;
   } catch(e) {
     el.innerHTML = '<div class="empty"><span class="empty-ico">⚠️</span>Erro ao carregar.</div>';
   }
+}
+
+async function doAdminResetActivities() {
+  if (!confirm('Tem certeza? Isso vai apagar as atividades e a água de TODOS os participantes. Não tem como desfazer.')) return;
+  if (!confirm('Confirmando de novo: resetar o mês de TODOS agora?')) return;
+
+  const btn = document.getElementById('resetActsBtn');
+  btn.disabled = true; btn.textContent = 'Resetando...';
+  try {
+    const r = await apiPost({ action: 'adminResetActivities', adminToken });
+    if (r.auth === false) { show('adminLoginScreen'); return; }
+    if (r.success) { toast('✓ Atividades resetadas!'); loadAdminData(); }
+    else { toast('⚠️ Erro ao resetar.', true); }
+  } catch(e) { toast('⚠️ Sem conexão.', true); }
+  btn.disabled = false; btn.textContent = '🗑️ Resetar atividades do mês';
 }
 
 async function toggleLock(key) {
@@ -1357,6 +1436,23 @@ async function toggleLock(key) {
     } else { toast('⚠️ Erro ao alterar.', true); }
   } catch(e) { toast('⚠️ Sem conexão.', true); }
   btn.disabled = false;
+}
+
+async function saveMetaAgua() {
+  const input = document.getElementById('metaAguaText');
+  const btn   = document.getElementById('saveMetaAguaBtn');
+  const err   = document.getElementById('metaAguaErr');
+  const liters = parseFloat(input ? input.value : '');
+  err.classList.remove('show');
+  if (!liters || liters <= 0) { err.textContent = 'Informe uma meta válida (em litros).'; err.classList.add('show'); return; }
+  btn.disabled = true; btn.textContent = 'Salvando...';
+  try {
+    const r = await apiPost({ action: 'adminSetConfig', adminToken, key: 'meta_agua', value: String(Math.round(liters * 1000)) });
+    if (r.auth === false) { show('adminLoginScreen'); return; }
+    if (r.success) { toast('✓ Meta de água atualizada!'); }
+    else { err.textContent = r.error || 'Erro ao salvar.'; err.classList.add('show'); }
+  } catch(e) { err.textContent = 'Sem conexão.'; err.classList.add('show'); }
+  btn.disabled = false; btn.textContent = 'Salvar meta de água';
 }
 
 async function saveRecs() {
@@ -1441,7 +1537,7 @@ async function toggleUserProfile(idx) {
   try {
     const r = await apiFetch(`?action=adminGetProfile&name=${enc(name)}&adminToken=${enc(adminToken || '')}`);
     if (r.auth === false) { show('adminLoginScreen'); return; }
-    const actLabels = { cardio: '🏃 Cardio', gym: '🏋️ Func./Academia', food: '🥗 Alimentação', sleep: '😴 Sono' };
+    const actLabels = { cardio: '🏃 Cardio', gym: '🏋️ Func./Academia', food: '🥗 Alimentação', sleep: '😴 Sono', water: '💧 Água' };
     const history   = (r.history || []).slice(0, 10).map(row => {
       const chips = (row.activities || []).map(a => `<span class="hist-chip ${esc(a)}">${esc(actLabels[a] || a)}</span>`).join('');
       return `<div class="hist-row"><div class="hist-date">${fmtDate(row.date)}</div><div class="hist-acts">${chips}</div><div class="hist-pts">+${row.points}</div></div>`;
@@ -1458,6 +1554,7 @@ async function toggleUserProfile(idx) {
           <div><div class="acts-val-gym">${r.gymCount||0}</div><div class="acts-sub">🏋️ Treinos</div></div>
           <div><div class="acts-val-food">${r.foodCount||0}</div><div class="acts-sub">🥗 Aliment.</div></div>
           <div><div class="acts-val-sleep">${r.sleepCount||0}</div><div class="acts-sub">😴 Sono</div></div>
+          <div><div class="acts-val-water">${r.waterCount||0}</div><div class="acts-sub">💧 Água</div></div>
         </div>
         <p class="section-title" style="margin-bottom:4px">Últimos 10 dias</p>
         ${history || '<p style="font-size:13px;color:var(--gray400);padding:8px 0">Sem atividades registradas.</p>'}
@@ -1489,49 +1586,6 @@ async function doAdminResetPass(idx) {
       toast(`✓ Senha de ${name} resetada!`);
     } else { toast('⚠️ ' + (r.error || 'Erro ao resetar.'), true); }
   } catch(e) { toast('⚠️ Sem conexão.', true); }
-}
-
-// ── PWA ──────────────────────────────────────────────
-let _deferredPrompt = null;
-
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/sw.js').catch(() => {});
-}
-
-window.addEventListener('beforeinstallprompt', e => {
-  e.preventDefault();
-  _deferredPrompt = e;
-  if (!localStorage.getItem('pwa_dismissed') &&
-      !window.matchMedia('(display-mode: standalone)').matches) {
-    setTimeout(() => {
-      document.getElementById('pwaBannerAndroid').style.display = 'flex';
-    }, 2500);
-  }
-});
-
-(function detectIOS() {
-  const isIOS       = /iphone|ipad|ipod/i.test(navigator.userAgent) && !window.MSStream;
-  const isStandalone = window.navigator.standalone;
-  if (isIOS && !isStandalone && !localStorage.getItem('pwa_dismissed')) {
-    setTimeout(() => {
-      document.getElementById('pwaBannerIOS').style.display = 'flex';
-    }, 2500);
-  }
-})();
-
-function dismissPWA() {
-  document.getElementById('pwaBannerAndroid').style.display = 'none';
-  document.getElementById('pwaBannerIOS').style.display     = 'none';
-  localStorage.setItem('pwa_dismissed', '1');
-}
-
-async function installPWA() {
-  if (!_deferredPrompt) return;
-  _deferredPrompt.prompt();
-  const { outcome } = await _deferredPrompt.userChoice;
-  _deferredPrompt   = null;
-  document.getElementById('pwaBannerAndroid').style.display = 'none';
-  localStorage.setItem('pwa_dismissed', '1');
 }
 
 init();
