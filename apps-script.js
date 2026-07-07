@@ -238,7 +238,7 @@ function getInitData(p) {
     cache.put('config', JSON.stringify(configData), 3600);
   }
 
-  const actRows  = getActSheet().getDataRange().getValues();
+  const actRows  = getCachedActRows();
   const lname    = p.name.toLowerCase();
   const dates    = (p.dates || '').split(',').filter(Boolean);
   const activities = {};
@@ -261,7 +261,7 @@ function getInitData(p) {
   };
 
   const waterMetaDefault = (parseInt(configData.meta_agua, 10) > 0) ? parseInt(configData.meta_agua, 10) : 2000;
-  const waterRows = getWaterSheet().getDataRange().getValues();
+  const waterRows = getCachedWaterRows();
   let waterQty  = 0;
   let waterMeta = waterMetaDefault;
   for (let i = 1; i < waterRows.length; i++) {
@@ -315,7 +315,7 @@ function saveActivity(d) {
         removed = true;
       }
     }
-    if (removed) CacheService.getScriptCache().remove('ranking');
+    if (removed) invalidateDataCache();
     return json({ success: true, action: removed ? 'removed' : 'not_found' });
   }
 
@@ -326,7 +326,7 @@ function saveActivity(d) {
   }
 
   sheet.appendRow([new Date().toISOString(), d.name, d.activity, d.date]);
-  CacheService.getScriptCache().remove('ranking');
+  invalidateDataCache();
   return json({ success: true, action: 'saved' });
 }
 
@@ -356,7 +356,7 @@ function addWater(d) {
       const current = parseInt(rows[i][2], 10) || 0;
       const newQty  = finish ? meta : Math.max(0, current + amount);
       sheet.getRange(i + 1, 3).setValue(newQty);
-      CacheService.getScriptCache().remove('ranking');
+      invalidateDataCache();
       return json({ success: true, quantity: newQty, meta, done: newQty >= meta });
     }
   }
@@ -364,7 +364,7 @@ function addWater(d) {
   const meta   = default_;
   const newQty = finish ? meta : Math.max(0, amount);
   sheet.appendRow([d.name, d.date, newQty, meta]);
-  CacheService.getScriptCache().remove('ranking');
+  invalidateDataCache();
   return json({ success: true, quantity: newQty, meta, done: newQty >= meta });
 }
 
@@ -375,8 +375,8 @@ function addWater(d) {
 function getProfile(name, token) {
   if (!validateToken(name, token)) return json({ auth: false });
 
-  const actRows   = getActSheet().getDataRange().getValues();
-  const waterRows = getWaterSheet().getDataRange().getValues();
+  const actRows   = getCachedActRows();
+  const waterRows = getCachedWaterRows();
   const userRow   = findUser(name);
   const since     = userRow ? userRow[2].toString().split('T')[0] : '';
   const lname     = name.toLowerCase();
@@ -426,6 +426,15 @@ function deleteUser(d) {
     }
   }
 
+  const wSheet = getWaterSheet();
+  const wRows  = wSheet.getDataRange().getValues();
+  for (let i = wRows.length - 1; i >= 1; i--) {
+    if (wRows[i][0].toString().toLowerCase() === lname) {
+      wSheet.deleteRow(i + 1);
+    }
+  }
+
+  invalidateDataCache();
   return json({ success: true });
 }
 
@@ -438,8 +447,8 @@ function getRanking() {
   const cached = cache.get('ranking');
   if (cached) return json(JSON.parse(cached));
 
-  const rows      = getActSheet().getDataRange().getValues();
-  const waterRows = getWaterSheet().getDataRange().getValues();
+  const rows      = getCachedActRows();
+  const waterRows = getCachedWaterRows();
   const scores    = buildScores(rows, getLocks(), waterRows);
   const data      = {
     ranking: toRankingArray(scores, 'total'),
@@ -455,8 +464,8 @@ function getRanking() {
 function getAdminDashboard(adminToken) {
   if (!validateAdminToken(adminToken)) return json({ auth: false });
 
-  const actRows   = getActSheet().getDataRange().getValues();
-  const waterRows = getWaterSheet().getDataRange().getValues();
+  const actRows   = getCachedActRows();
+  const waterRows = getCachedWaterRows();
   const uRows     = getUserSheet().getDataRange().getValues();
   const todayStr  = Utilities.formatDate(new Date(), 'America/Sao_Paulo', 'yyyy-MM-dd');
   const weekDates = getCurrentWeekDates();
@@ -661,6 +670,42 @@ function getActSheet() {
   return s;
 }
 
+// Leitura da planilha inteira é a operação mais lenta do backend e se repete a cada
+// abertura de tela (init, ranking, perfil, admin). Cache curto (a mesma escrita que já
+// invalida o cache de 'ranking' precisa invalidar este também — ver CACHE_DATA_KEYS).
+const CACHE_DATA_TTL  = 45; // segundos
+const CACHE_DATA_KEYS = ['actRows', 'waterRows'];
+
+function invalidateDataCache() {
+  const cache = CacheService.getScriptCache();
+  cache.remove('ranking');
+  CACHE_DATA_KEYS.forEach(k => cache.remove(k));
+}
+
+function getCachedActRows() {
+  const cache  = CacheService.getScriptCache();
+  const cached = cache.get('actRows');
+  if (cached) return JSON.parse(cached);
+
+  const rows = getActSheet().getDataRange().getValues();
+  // Normaliza a coluna Data agora, senão o round-trip por JSON perderia a formatação
+  // de Date que normalizeDate() sabe tratar (ver comentário na própria normalizeDate).
+  const normalized = rows.map((r, i) => i === 0 ? r : [r[0], r[1], r[2], normalizeDate(r[3])]);
+  try { cache.put('actRows', JSON.stringify(normalized), CACHE_DATA_TTL); } catch (e) { /* linha muito grande p/ cache — ok, só não cacheia */ }
+  return normalized;
+}
+
+function getCachedWaterRows() {
+  const cache  = CacheService.getScriptCache();
+  const cached = cache.get('waterRows');
+  if (cached) return JSON.parse(cached);
+
+  const rows = getWaterSheet().getDataRange().getValues();
+  const normalized = rows.map((r, i) => i === 0 ? r : [r[0], normalizeDate(r[1]), r[2], r[3]]);
+  try { cache.put('waterRows', JSON.stringify(normalized), CACHE_DATA_TTL); } catch (e) { /* idem */ }
+  return normalized;
+}
+
 function getConfigSheet() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   let s = ss.getSheetByName(SHEET_CONFIG);
@@ -731,7 +776,7 @@ function adminResetActivities(d) {
   const waterSheet = getWaterSheet();
   if (waterSheet.getLastRow() > 1) waterSheet.deleteRows(2, waterSheet.getLastRow() - 1);
 
-  CacheService.getScriptCache().remove('ranking');
+  invalidateDataCache();
   return json({ success: true });
 }
 
@@ -739,8 +784,8 @@ function adminGetUserProfile(params) {
   if (!validateAdminToken(params.adminToken)) return json({ auth: false });
   if (!params.name)                           return json({ success: false, error: 'Nome obrigatório.' });
 
-  const actRows   = getActSheet().getDataRange().getValues();
-  const waterRows = getWaterSheet().getDataRange().getValues();
+  const actRows   = getCachedActRows();
+  const waterRows = getCachedWaterRows();
   const userRow   = findUser(params.name);
   if (!userRow) return json({ success: false, error: 'Usuário não encontrado.' });
 
